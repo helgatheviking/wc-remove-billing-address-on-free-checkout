@@ -29,7 +29,7 @@ function kia_remove_billing_address_fields_for_free_checkout( $fields ) {
 
     $cart_total = floatval( WC()->cart->get_total( 'edit' ) );
 
-    if( 0.0 === $cart_total ) {
+    if( ! WC()->cart->needs_shipping() && 0.0 === $cart_total ) {
 
         if( isset( $fields['billing_address_1'] ) ) unset( $fields['billing_address_1'] );
         if( isset( $fields['billing_address_2'] ) ) unset( $fields['billing_address_2'] );

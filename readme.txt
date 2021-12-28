@@ -41,5 +41,8 @@ Please report any bugs, errors, warnings, code problems to [Github](https://gith
 
 == Changelog ==
 
+= 2021-12-28 - 1.0.1 =
+* Fix: Do not remove address when shipping is required. Fixes "Please enter an address to continue." error on checkout.
+
 = 1.0 =
 * Initial release.
