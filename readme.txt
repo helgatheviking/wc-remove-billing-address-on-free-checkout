@@ -39,9 +39,29 @@ Please report any bugs, errors, warnings, code problems to [Github](https://gith
 
 1. The simplified checkout form.
 
+== Frequently Asked Questions ==
+
+= How to exclude billing phone field from removal? =
+
+To achieve this you can add the following snippet to your theme's `functions.php` or via the [Code Snippets plugin](wordpress.org/plugins/code-snippets/).
+
+`
+/**
+ * Do not remove billing phone
+ *
+ * @param array   $fields    The billing fields we are removing
+ * @return array
+ */
+function kia_do_not_remove_billing_phone( $fields ) {
+    return array_diff( $fields, array( 'billing_phone' ) );
+}
+add_filter( 'wc_billing_fields_to_remove_for_free_checkout', 'kia_do_not_remove_billing_phone' );
+`
+
 == Changelog ==
 
 = 2021-12-28 - 1.0.1 =
+* New: Introduce `wc_billing_fields_to_remove_for_free_checkout` filter.
 * Fix: Do not remove address when shipping is required. Fixes "Please enter an address to continue." error on checkout.
 
 = 1.0 =

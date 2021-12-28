@@ -31,13 +31,26 @@ function kia_remove_billing_address_fields_for_free_checkout( $fields ) {
 
     if( ! WC()->cart->needs_shipping() && 0.0 === $cart_total ) {
 
-        if( isset( $fields['billing_address_1'] ) ) unset( $fields['billing_address_1'] );
-        if( isset( $fields['billing_address_2'] ) ) unset( $fields['billing_address_2'] );
-        if( isset( $fields['billing_city'] ) ) unset( $fields['billing_city'] );
-        if( isset( $fields['billing_state'] ) ) unset( $fields['billing_state'] );
-        if( isset( $fields['billing_postcode'] ) ) unset( $fields['billing_postcode'] );
-        if( isset( $fields['billing_country'] ) ) unset( $fields['billing_country'] );
-        if( isset( $fields['billing_phone'] ) ) unset( $fields['billing_phone'] );
+        /**
+         * Fields to remove if Order total is 0.00
+         *
+         * @since 1.0.1
+         * @param array   $fields    The billing fields we are removing
+         * @return array
+         */
+        $fields_to_remove = (array) apply_filters( 'wc_billing_fields_to_remove_for_free_checkout', array( 
+            'billing_address_1',
+            'billing_address_2',
+            'billing_city',
+            'billing_state',
+            'billing_postcode',
+            'billing_country',
+            'billing_phone',
+        ) );
+
+        foreach ( $fields_to_remove as $field ) {
+            if( isset( $fields[$field] ) ) unset( $fields[$field] );
+        }
 
     }
 
