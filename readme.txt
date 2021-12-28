@@ -3,8 +3,8 @@ Contributors: helgatheviking
 Donate link: https://www.paypal.com/fundraiser/charity/1451316
 Tags: woocommerce, checkout, billing, address
 Requires at least: 5.0.0
-Tested up to: 5.3.2
-Stable tag: 1.0.0
+Tested up to: 5.8.2
+Stable tag: 1.0.1
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
