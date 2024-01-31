@@ -9,7 +9,7 @@
  * Requires at least: 5.3
  * Tested up to: 5.8.2
  * WC requires at least: 5.5.0
- * WC tested up to: 6.0.0
+ * WC tested up to: 8.6.0
  *
  * Copyright: © 2020 Kathy Darling.
  * License: GNU General Public License v3.0
