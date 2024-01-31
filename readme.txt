@@ -1,6 +1,6 @@
 === Remove WooCommerce Billing Address Fields for Free Checkout ===
 Contributors: helgatheviking
-Donate link: https://www.paypal.com/fundraiser/charity/1451316
+Donate link: https://www.paypal.com/paypalme/kathyisawesome
 Tags: woocommerce, checkout, billing, address
 Requires at least: 5.0.0
 Tested up to: 5.8.2

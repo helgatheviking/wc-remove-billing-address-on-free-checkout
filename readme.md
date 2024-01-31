@@ -30,4 +30,4 @@ Please report any bugs, errors, warnings, code problems to [Github](https://gith
 ![The simplified checkout form.](https://user-images.githubusercontent.com/507025/79612019-15b96c80-80b9-11ea-8a4a-54ddf6ec8b22.png)
 
 # Donations #
-**Support my team:** https://www.paypal.com/fundraiser/charity/1451316  
+**Support my work:** https://www.paypal.com/paypalme/kathyisawesome
