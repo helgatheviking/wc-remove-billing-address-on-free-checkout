@@ -10,9 +10,9 @@
  * Tested up to: 6.7
  * WC requires at least: 7.0.0
  * WC tested up to: 9.6.0
- * Requires PHP: 7.4
+ * Requires PHP: 8.1
  *
- * Copyright: © 2020 Kathy Darling.
+ * Copyright: © 2020 Kathy Darling; 2026 Brian Henry.
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  *
