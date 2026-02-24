@@ -14,9 +14,9 @@ class Test_Plugin_Functions extends Unit_Testcase {
 	public function test_function_exists(): void {
 		// Include the plugin file
 		require_once codecept_root_dir( 'wc-remove-billing-address-on-free-checkout.php' );
-		
+
 		// Verify the function exists
-		$this->assertTrue( function_exists( 'kia_remove_billing_address_fields_for_free_checkout' ) );
+		$this->assertTrue( function_exists( 'remove_billing_address_fields_for_free_checkout' ) );
 	}
 
 	/**
@@ -56,7 +56,7 @@ class Test_Plugin_Functions extends Unit_Testcase {
 			'billing_phone' => []
 		];
 
-		$result = kia_remove_billing_address_fields_for_free_checkout( $input_fields );
+		$result = remove_billing_address_fields_for_free_checkout( $input_fields );
 
 		// Address fields should be removed
 		$this->assertArrayNotHasKey( 'billing_address_1', $result );
@@ -104,7 +104,7 @@ class Test_Plugin_Functions extends Unit_Testcase {
 			'billing_phone' => []
 		];
 
-		$result = kia_remove_billing_address_fields_for_free_checkout( $input_fields );
+		$result = remove_billing_address_fields_for_free_checkout( $input_fields );
 
 		// All fields should remain for paid cart
 		$this->assertArrayHasKey( 'billing_address_1', $result );
@@ -150,7 +150,7 @@ class Test_Plugin_Functions extends Unit_Testcase {
 			'billing_phone' => []
 		];
 
-		$result = kia_remove_billing_address_fields_for_free_checkout( $input_fields );
+		$result = remove_billing_address_fields_for_free_checkout( $input_fields );
 
 		// All fields should remain when shipping is needed
 		$this->assertArrayHasKey( 'billing_address_1', $result );

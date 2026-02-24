@@ -28,7 +28,7 @@
 
     <!-- PHP version check -->
     <rule ref="PHPCompatibilityWP" />
-    <config name="testVersion" value="7.4-"/>
+    <config name="testVersion" value="8.1-"/>
 
     <!-- Do not require the object type in the comment, presuming it is strongly typed -->
     <rule ref="Squiz.Commenting.VariableComment.MissingVar">

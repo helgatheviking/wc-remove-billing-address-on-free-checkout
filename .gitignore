@@ -84,3 +84,4 @@ patches.lock.json
 tests/_output/
 tests/_support/_generated/
 /tests/_data/dump.sql
+/artifacts

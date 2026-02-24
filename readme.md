@@ -1,5 +1,14 @@
 # Remove WooCommerce Billing Address Fields for Free Checkout #
 
+wp wc product create --user=1 --name="Digital Product" --type=simple --regular_price=9.99 --virtual=true
+wp wc product create --user=1 --name="Free Digital Product" --type=simple --regular_price=0.00 --virtual=true
+wp wc product create --user=1 --name="Shipped Product" --type=simple --regular_price=9.99 --virtual=false
+wp wc product create --user=1 --name="Free Shipped Product" --type=simple --regular_price=0.00 --virtual=false
+wp wc product create --user=1 --name="Regular Product" --type=simple --regular_price=9.99 --virtual=false
+
+
+
+
 It can be a hassle to fill out your billing address if you aren't actually paying any money. This plugin removes the billing address fields from WooCommerce checkout when no shipping is required and the cart total is 0, ie: Free. 
 
 Specifically the following fields are removed:
