@@ -1,0 +1,100 @@
+name: Code Coverage Report Comment
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches:
+      - master
+
+env:
+  COVERAGE_PHP_VERSION: '7.4'
+
+jobs:
+  php-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: wc_remove_billing_address_tests
+        ports:
+          - 3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    permissions:
+      pull-requests: write # To add coverage comment
+      contents: write # To commit coverage badge & report
+
+    strategy:
+      matrix:
+        php: [ '7.4', '8.0', '8.1', '8.2', '8.3' ]
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: ${{ matrix.php == env.COVERAGE_PHP_VERSION && 'xdebug' || 'none' }}
+
+      - name: Update .env.testing config for GitHub Actions
+        env:
+          PLUGIN_SLUG: ${{ github.event.repository.name }}
+        run: |
+          find . -depth \( -name '.env.testing' \) -exec sed -i "s/_DB_PORT=\"33066\"/_DB_PORT=\"${{ job.services.mysql.ports['3306'] }}\"/g" {} +
+
+      - name: Read .env.testing
+        uses: c-py/action-dotenv-to-setenv@v5
+        with:
+          env-file: .env.testing
+
+      - name: Install PHP dependencies
+        run: composer install --verbose
+
+      - name: Setup test environment
+        run: cp .env.testing .env
+
+      - name: Run tests without coverage
+        if: ${{ matrix.php != env.COVERAGE_PHP_VERSION }}
+        run: |
+          vendor/bin/codecept run unit --debug
+          vendor/bin/codecept run wpunit --debug
+
+      - name: Run tests with coverage
+        if: ${{ matrix.php == env.COVERAGE_PHP_VERSION }}
+        run: |
+          vendor/bin/codecept run unit --coverage unit.cov --debug
+          vendor/bin/codecept run wpunit --coverage wpunit.cov --debug
+          vendor/bin/phpcov merge --clover tests/_output/clover.xml --html tests/_output/html tests/_output
+
+      - name: Upload coverage to Codecov
+        if: ${{ matrix.php == env.COVERAGE_PHP_VERSION }}
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./tests/_output/clover.xml
+          verbose: true
+
+      - name: Generate coverage badge
+        if: ${{ matrix.php == env.COVERAGE_PHP_VERSION && github.ref == 'refs/heads/master' }}
+        run: |
+          coverage=$(vendor/bin/phpcov --merge --text tests/_output | grep -Po 'Lines:\s+\d+\.\d+' | grep -Po '\d+\.\d+' || echo "0.00")
+          echo "Coverage: ${coverage}%"
+          color=$(php -r "echo $coverage >= 80 ? 'brightgreen' : ($coverage >= 60 ? 'yellow' : 'red');")
+          curl -s "https://img.shields.io/badge/coverage-${coverage}%25-${color}" > .github/coverage.svg
+
+      - name: Commit coverage badge
+        if: ${{ matrix.php == env.COVERAGE_PHP_VERSION && github.ref == 'refs/heads/master' }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .github/coverage.svg || true
+          git diff --staged --quiet || git commit -m "Update coverage badge [skip ci]"
+          git push || true

@@ -1,0 +1,6 @@
+actor: UnitTester
+modules:
+    enabled:
+        - Asserts
+        - \WC_Remove_Billing\Helper\Unit
+bootstrap: _bootstrap.php

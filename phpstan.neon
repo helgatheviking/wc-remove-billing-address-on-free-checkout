@@ -1,0 +1,39 @@
+parameters:
+    level: 5
+    paths:
+        - wc-remove-billing-address-on-free-checkout.php
+        - tests/unit/
+        - tests/wpunit/
+    
+    scanDirectories:
+        - vendor/10up/wp_mock/php/
+        - vendor/johnpbloch/wordpress/
+        - vendor/php-stubs/woocommerce-stubs/
+        - vendor/szepeviktor/phpstan-wordpress/
+        - wp-content/plugins/woocommerce/
+    
+    scanFiles:
+        - vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
+
+    bootstrapFiles:
+        - vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
+
+    ignoreErrors:
+        - '#Undefined variable: \$[a-zA-Z_][a-zA-Z0-9_]*#'
+        - message: '#Variable \$[a-zA-Z_][a-zA-Z0-9_]* might not be defined\.#'
+
+    excludePaths:
+        - tests/_support/_generated
+        - tests/_data
+        - tests/_output
+        - vendor
+        - node_modules
+        - wordpress
+        - wp-content
+
+    dynamicConstantNames:
+        - ABSPATH
+        - WP_DEBUG
+
+    typeAliases:
+        PositiveInt: 'int<1, max>'
