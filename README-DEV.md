@@ -136,7 +136,7 @@ The wp-env configuration includes:
 npm run wp-env
 
 # Wait for WordPress to be ready
-curl -s http://localhost:8080
+curl -s http://localhost:8888
 
 # Run unit tests
 composer test
@@ -163,7 +163,7 @@ npx playwright test --debug
 composer test -- --debug
 
 # Access WordPress admin
-open http://localhost:8080/wp-admin
+open http://localhost:8888/wp-admin
 # admin / password
 ```
 

@@ -4,7 +4,7 @@ namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce;
 
 use WC_Payment_Gateways;
 
-class Checkout {
+class 	Checkout {
 
 	/**
 	 * Default fields to remove (the original plugin behavior).

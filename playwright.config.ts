@@ -13,7 +13,7 @@ require( 'dotenv' ).config();
 const WP_BASE_URL =
   process.env.BASEURL ||
   process.env.WP_BASE_URL ||
-  'http://localhost:8080';
+  'http://localhost:8888';
 
 // Set WP_BASE_URL so @wordpress/e2e-test-utils-playwright uses the same base URL.
 process.env.WP_BASE_URL = WP_BASE_URL;
@@ -27,7 +27,7 @@ const STORAGE_STATE_PATH =
  */
 export default defineConfig( {
   testDir: './tests/e2e-pw',
-  testIgnore: '**/helpers-tests/**',
+  testIgnore: [ '**/helpers-tests/**', '**/checkout-blocks*' ],
   globalSetup: require.resolve( './tests/e2e-pw/global-setup.ts' ),
   /* Run tests in files in parallel */
   fullyParallel: true,

@@ -42,7 +42,7 @@ jobs:
         run: |
           echo "Waiting for WordPress to be ready..."
           for i in {1..30}; do
-            if curl -s http://localhost:8080 > /dev/null; then
+            if curl -s http://localhost:8888 > /dev/null; then
               echo "WordPress is ready!"
               break
             fi
@@ -60,7 +60,7 @@ jobs:
           npx wp-env run cli -- wp plugin list
           # Set up permalinks for REST API
           npx wp-env run cli -- wp rewrite structure '/%year%/%monthnum%/%postname%/' --hard
-          # Also activate on tests environment (port 8080 for tests)
+          # Also activate on tests environment (port 8888 for tests)
           npx wp-env run tests-cli -- wp plugin activate wc-remove-billing-address-on-free-checkout
           npx wp-env run tests-cli -- wp plugin activate woocommerce
           npx wp-env run tests-cli -- wp rewrite structure '/%year%/%monthnum%/%postname%/' --hard
@@ -69,7 +69,7 @@ jobs:
         run: npx playwright test --reporter=github
         env:
           CI: true
-          WP_BASE_URL: http://localhost:8080
+          WP_BASE_URL: http://localhost:8888
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
