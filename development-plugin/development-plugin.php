@@ -36,17 +36,28 @@ require_once __DIR__ . '/class-wp-env.php';
 
 add_filter( 'woocommerce_payment_gateways', function(array $gateways) {
 
-	$gateways['one'] = new class() extends WC_Payment_Gateway {
+	$gateways['test_gateway_one'] = new class() extends WC_Payment_Gateway {
+		public function __construct()
+		{
+			$this->update_option('enabled', 'yes');
+		}
 		public $method_title = 'Test Gateway 1'; // How it is displayed in admin UI.
 		public $title = 'Test Gateway 1'; // How it is displayed at checkout.
-		public $id = 'one'; // Unique id.
+		public $id = 'test_gateway_one'; // Unique id.
 	};
 
-	$gateways['two'] = new class() extends WC_Payment_Gateway {
+	$gateways['test_gateway_two'] = new class() extends WC_Payment_Gateway {
+		public function __construct()
+		{
+			$this->update_option('enabled', 'yes');
+		}
 		public $method_title = 'Test Gateway 2'; // How it is displayed in admin UI.
 		public $title = 'Test Gateway 2'; // How it is displayed at checkout.
-		public $id = 'two'; // Unique id.
+		public $id = 'test_gateway_two'; // Unique id.
 	};
+
+	$gateways['test_gateway_one']->get_option( 'enabled', 'yes' );
+	$gateways['test_gateway_two']->get_option( 'enabled', 'yes' );
 
 	return $gateways;
 });

@@ -2,8 +2,9 @@
 <ruleset name="WordPress Coding Standards for WC Remove Billing Address Plugin">
     <description>WordPress coding standards for WC Remove Billing Address on Free Checkout plugin</description>
 
-    <rule ref="WordPress" />
-    <rule ref="WooCommerce" />
+    <!-- Configs -->
+    <config name="minimum_supported_wp_version" value="6.9" />
+    <config name="testVersion" value="8.4-" />
 
     <!-- Check all PHP files in directory tree by default. -->
     <arg name="extensions" value="php"/>
