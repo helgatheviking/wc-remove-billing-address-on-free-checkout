@@ -1,3 +1,21 @@
+
+
+What is the default behaviour when a virtual product has a zero price and is the only item in the cart?
+
+
+
+// is it even legal to "checkout" for a free virtual product?
+//		What is the default behaviour when a virtual product has a zero price and is the only item in the cart?
+//		add_filter( 'woocommerce_checkout_fields', array( $checkout, 'move_email_input_first' ) );
+// Parse $_POST for common use later.
+//		add_action( 'woocommerce_checkout_update_order_review', array( $checkout, 'parse_post_on_update_order_review' ), 1, 1 );
+// Runs during woocommerce_checkout_update_order_review.
+//		add_filter( 'woocommerce_update_order_review_fragments', array( $checkout, 'rerender_billing_fields_fragment' ) );
+//		add_filter( 'woocommerce_update_order_review_fragments', function ( $fragments ) {	} );
+
+
+
+
 # Contributing
 
 ```

@@ -1,10 +1,10 @@
 /**
  * Test basic plugin activation and deactivation.
  */
-import { test, expect, admin } from '@wordpress/e2e-test-utils-playwright';
+import { test, expect } from '@wordpress/e2e-test-utils-playwright';
 
 test.describe( 'Plugin Activation', () => {
-	test( 'Plugin can be activated without errors', async ( { page } ) => {
+	test( 'Plugin can be activated without errors', async ( { page, admin } ) => {
 		await admin.visitAdminPage( 'plugins.php' );
 
 		// Look for our plugin in the list
@@ -33,7 +33,7 @@ test.describe( 'Plugin Activation', () => {
 		expect( bodyText ).not.toContain( 'Warning:' );
 	} );
 
-	test( 'Plugin appears in installed plugins list with correct details', async ( { page } ) => {
+	test( 'Plugin appears in installed plugins list with correct details', async ( { page, admin } ) => {
 		await admin.visitAdminPage( 'plugins.php' );
 
 		const pluginRow = page.locator( 'tr[data-plugin*="wc-remove-billing-address-on-free-checkout"]' );
@@ -49,7 +49,7 @@ test.describe( 'Plugin Activation', () => {
 		await expect( pluginRow.locator( '.plugin-description' ) ).toContainText( 'Kathy Darling' );
 	} );
 
-	test( 'Plugin hook is registered when active', async ( { page } ) => {
+	test( 'Plugin hook is registered when active', async ( { page, admin } ) => {
 		// Go to a page where we can check if the hook is registered
 		await admin.visitAdminPage( 'plugins.php' );
 

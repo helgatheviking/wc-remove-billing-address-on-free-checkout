@@ -53,18 +53,29 @@ if wp plugin is-active woocommerce; then
 	create_product_if_not_exists "Free Digital Product" --type=simple --regular_price=0.00 --virtual=true
 	create_product_if_not_exists "Shipped Product" --type=simple --regular_price=9.99 --virtual=false
 	create_product_if_not_exists "Free Shipped Product" --type=simple --regular_price=0.00 --virtual=false
-	create_product_if_not_exists "Regular Product" --type=simple --regular_price=9.99 --virtual=false
+
+  wp wc payment_gateway update cheque --enabled=1 --user=admin
+  wp wc payment_gateway update cod --enabled=1 --user=admin
+
+  # Add shipping methods (flat rate + free shipping) to the default zone.
+  echo "Configuring shipping methods..."
+  ZONE_METHODS=$(wp wc shipping_zone_method list 0 --user=admin --format=count 2>/dev/null || echo "0")
+  if [ "$ZONE_METHODS" = "0" ]; then
+    wp wc shipping_zone_method create 0 --method_id=flat_rate --user=admin
+    wp wc shipping_zone_method create 0 --method_id=free_shipping --user=admin
+    echo "Shipping methods added."
+  else
+    echo "Shipping methods already configured."
+  fi
+
+  # Trying to disable "Welcome to Woo!" – "Skip guided setup"
+  # Setting `woocommerce_onboarding_profile` disables it, I'm not sure what this `wp_persisted_preferences` does exactly.
+  # wp-admin/admin.php?page=wc-admin&path=%2Fsetup-wizard
+  wp user meta update 1 wp_persisted_preferences '{"core":{"isComplementaryAreaVisible":true},"core\/edit-post":{"welcomeGuide":false},"_modified":"2026-01-29T22:58:19.661Z"}' --format=json
+
+  wp option update woocommerce_onboarding_profile '{"skipped":true}' --format=json
 
   wp option set woocommerce_coming_soon no
-
-  wp wc payment_gateway update cheque --enabled=1
-#  wp wc payment_gateway update test_gateway_one --enabled="yes"
-#  wp wc payment_gateway update test_gateway_two --enabled="yes"
-
-
-  wp option patch update test_gateway_one enabled yes
-  wp option patch update test_gateway_two enabled yes
-
 
 	echo "WooCommerce setup complete!"
 else

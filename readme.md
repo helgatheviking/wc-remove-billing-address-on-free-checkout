@@ -37,4 +37,35 @@ Please report any bugs, errors, warnings, code problems to [Github](https://gith
 **Support my team:** https://www.paypal.com/fundraiser/charity/1451316  
 
 
+## Variables
 
+### Shipping destination
+
+> This controls which shipping address is used by default.
+
+`wp-admin/admin.php?page=wc-settings&tab=shipping&section=options`
+
+![Shipping settings Shipping destination.](./.wordpress-org/shipping-destination.png)
+
+`wp option get woocommerce_ship_to_destination`
+
+|	Shipping destination | value        |
+|	-- |--------------| 
+| Default to customer shipping address | shipping     |
+| Default to customer billing address | billing      |
+| Force shipping to the customer billing address | billing_only |
+
+
+### Product properties
+
+|   | Free              | Paid                       |
+|---|-------------------|----------------------------|
+| Virtual | No address at all | No billing address for CoD |
+| Shipped | Shipping only     | Shipping only              |
+
+`wp product create --name="example-product" "--regular_price=0.00 --virtual=true`
+
+
+
+* WooCommerce already hides the shipping address for virtual products
+* 
