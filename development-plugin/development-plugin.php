@@ -15,11 +15,6 @@ if(is_readable($actual_plugin_dir . '/vendor/autoload.php')) {
 	require_once $actual_plugin_dir . '/vendor/autoload.php';
 }
 
-/**
- * TODO check for stray requests: exchange rate query seems to be happening too frequently.
- * https://api-pub.bitfinex.com/v2/tickers?symbols=tBTCUSD
- */
-
 if ( ! defined( 'WPINC' ) ) {
 	return;
 }
@@ -34,6 +29,9 @@ require_once __DIR__ . '/class-wp-env.php';
 // `wp-env` fixes.
 (new WP_Env())->register_hooks();
 
+/**
+ * I wanted to use Cash On Delivery and Cheque gateways, but they use JavaScript UIs
+ */
 add_filter( 'woocommerce_payment_gateways', function(array $gateways) {
 
 	$gateways['test_gateway_one'] = new class() extends WC_Payment_Gateway {
@@ -44,6 +42,21 @@ add_filter( 'woocommerce_payment_gateways', function(array $gateways) {
 		public $method_title = 'Test Gateway 1'; // How it is displayed in admin UI.
 		public $title = 'Test Gateway 1'; // How it is displayed at checkout.
 		public $id = 'test_gateway_one'; // Unique id.
+	 	public $description = 'Test Gateway 1';
+
+		public function process_payment($order_id)
+		{
+			// Reduce stock levels.
+			wc_reduce_stock_levels( $order_id );
+
+			// Remove cart.
+			WC()->cart->empty_cart();
+
+			return array(
+				'result'   => 'success',
+				'redirect' => $this->get_return_url(  )
+			);
+		}
 	};
 
 	$gateways['test_gateway_two'] = new class() extends WC_Payment_Gateway {
@@ -54,6 +67,22 @@ add_filter( 'woocommerce_payment_gateways', function(array $gateways) {
 		public $method_title = 'Test Gateway 2'; // How it is displayed in admin UI.
 		public $title = 'Test Gateway 2'; // How it is displayed at checkout.
 		public $id = 'test_gateway_two'; // Unique id.
+		public $description = 'Test Gateway 2';
+		public $require_billing_fields = false;
+
+		public function process_payment($order_id)
+		{
+			// Reduce stock levels.
+			wc_reduce_stock_levels( $order_id );
+
+			// Remove cart.
+			WC()->cart->empty_cart();
+
+			return array(
+			 'result'   => 'success',
+			   'redirect' => $this->get_return_url(  )
+			);
+		}
 	};
 
 	$gateways['test_gateway_one']->get_option( 'enabled', 'yes' );

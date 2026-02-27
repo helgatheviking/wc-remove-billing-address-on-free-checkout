@@ -28,6 +28,13 @@ class WC_Remove_Billing_Address_On_Free_Checkout {
 		$checkout = new Checkout();
 
 		add_filter( 'woocommerce_billing_fields', array( $checkout,'remove_billing_address_fields_for_free_checkout' ) );
+		add_filter( 'woocommerce_checkout_fields', array( $checkout, 'remove_shipping_fields_for_virtual_products' ) );
+
+
+		add_action('wp_enqueue_scripts', array( $checkout, 'enqueue_scripts' ));
+		add_filter( 'woocommerce_update_order_review_fragments', array( $checkout, 'rerender_billing_fields') );
+		add_filter( 'woocommerce_checkout_fields', array( $checkout, 'remove_billing_fields_per_gateway') );
+
 	}
 
 }
