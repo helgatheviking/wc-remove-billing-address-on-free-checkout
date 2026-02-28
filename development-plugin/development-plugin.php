@@ -9,6 +9,7 @@
 namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout\Development_Plugin;
 
 use Alley_Interactive\Autoloader\Autoloader;
+use KIA\WC_Remove_Billing_Address_On_Free_Checkout\Development_Plugin\Rest\WooCommerce_Settings;
 use WC_Payment_Gateway;
 
 $actual_plugin_dir = dirname( __DIR__, 1 ) . '/wc-remove-billing-address-on-free-checkout';
@@ -31,6 +32,7 @@ require_once __DIR__ . '/class-wp-env.php';
 
 // `wp-env` fixes.
 ( new WP_Env() )->register_hooks();
+( new WooCommerce_Settings() )->register_hooks();
 
 /**
  * I wanted to use Cash On Delivery and Cheque gateways, but they use JavaScript UIs
