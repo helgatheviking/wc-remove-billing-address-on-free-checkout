@@ -68,4 +68,4 @@ Please report any bugs, errors, warnings, code problems to [Github](https://gith
 
 
 * WooCommerce already hides the shipping address for virtual products
-* 
+* With $0 checkout WooCommerce already assigned no payment gateway to the order
