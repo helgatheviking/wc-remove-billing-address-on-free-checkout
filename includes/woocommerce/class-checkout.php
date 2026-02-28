@@ -13,6 +13,8 @@ use WC_Payment_Gateways;
 
 /**
  * Filters fields in PHP; enqueues JS to re-filter when payment gateway is changed; re-renders the checkout HTML.
+ *
+ * @phpstan-type Field array{type?:string, label:string, required:bool, class:array<string>, validate?:array<string>, autocomplete?:string, priority:int}
  */
 class Checkout {
 
@@ -205,10 +207,8 @@ class Checkout {
 	 *
 	 * @hooked woocommerce_billing_fields
 	 *
-	 * @phpstan-type Field array{type?:string, label:string, required:bool, class:array<string>, validate?:array<string>, autocomplete?:string, priority:int}
-	 *
-	 * @param array<Field> $fields The billing fields.
-	 * @return array<Field>
+	 * @param array<string, Field>&array<string,mixed> $fields The billing fields. Some are custom.
+	 * @return array<string, Field>&array<string,mixed>
 	 */
 	public function remove_billing_address_fields_for_free_checkout( array $fields ): array {
 
