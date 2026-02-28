@@ -2,6 +2,7 @@
 
 namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout;
 
+use WP_Mock\HookedCallback;
 use function Patchwork\redefine;
 use function Patchwork\relay;
 
@@ -13,7 +14,7 @@ class Plugin_File_Unit_Test extends Unit_Testcase {
 	/**
 	 * Verifies the plugin initialization.
 	 */
-	public function test_plugin_include(): void {
+	public function test_plugin_include_happy_path(): void {
 
 		$plugin_root_dir = codecept_root_dir();
 
@@ -31,6 +32,8 @@ class Plugin_File_Unit_Test extends Unit_Testcase {
 			}
 		);
 
+		\WP_Mock::expectActionAdded( 'woocommerce_loaded', \WP_Mock\Functions::type( 'callable' ) );
+
 		redefine(
 			array( WC_Remove_Billing_Address_On_Free_Checkout::class, 'register_hooks' ),
 			function () use ( &$called ) {
@@ -38,7 +41,24 @@ class Plugin_File_Unit_Test extends Unit_Testcase {
 			}
 		);
 
+		$woocommerce_loaded_callbacks = array();
+
+		redefine(
+			array( HookedCallback::class, 'react' ),
+			function ( $callback, $priority, $argument_count ) use ( &$woocommerce_loaded_callbacks ) {
+				/** @phpstan-ignore-next-line instanceof.alwaysFalse, instanceof.alwaysFalse */
+				if ( ( $this instanceof HookedCallback ) && 'woocommerce_loaded' === $this->name ) {
+					$woocommerce_loaded_callbacks[] = $callback;
+				}
+				return relay( func_get_args() );
+			}
+		);
+
 		require codecept_root_dir( 'wc-remove-billing-address-on-free-checkout.php' );
+
+		foreach ( $woocommerce_loaded_callbacks as $callback ) { /** @phpstan-ignore foreach.emptyArray */
+			call_user_func( $callback );
+		}
 
 		$this->assertContains( 'WC_Remove_Billing_Address_On_Free_Checkout::register_hooks', $called, json_encode( $called ) ?: 'error printing $called array' );
 	}
@@ -74,5 +94,7 @@ class Plugin_File_Unit_Test extends Unit_Testcase {
 		require codecept_root_dir( 'wc-remove-billing-address-on-free-checkout.php' );
 
 		$this->assertNotContains( 'WC_Remove_Billing_Address_On_Free_Checkout::register_hooks', $called, json_encode( $called ) ?: 'error printing $called array' );
+
+		\WP_Mock::expectActionNotAdded( 'woocommerce_loaded', \WP_Mock\Functions::type( 'callable' ) );
 	}
 }

@@ -3,8 +3,8 @@
  * The plugin only hooks 'woocommerce_billing_fields' which is NOT used by blocks checkout.
  * These tests demonstrate that the plugin does NOT work with blocks checkout.
  */
-import { test, expect } from '@wordpress/e2e-test-utils-playwright';
-import { loginAsAdmin } from './helpers/ui/login';
+import { test, expect, RequestUtils } from '@wordpress/e2e-test-utils-playwright';
+import { loginAsAdmin } from './helpers/general/ui/login';
 
 test.describe( 'WC Remove Billing Address - Blocks Checkout (Plugin has NO effect)', () => {
 	let freeProductId: string;
@@ -12,6 +12,7 @@ test.describe( 'WC Remove Billing Address - Blocks Checkout (Plugin has NO effec
 	let checkoutPageId: string;
 
 	test.beforeAll( async ( { requestUtils } ) => {
+
 		// Create test products using REST API
 		const freeProduct = await requestUtils.rest( {
 			method: 'POST',
@@ -48,8 +49,8 @@ test.describe( 'WC Remove Billing Address - Blocks Checkout (Plugin has NO effec
 			}
 		} );
 
-		const checkoutPage = pages.find( ( page: any ) => 
-			page.title.rendered.toLowerCase() === 'checkout' 
+		const checkoutPage = pages.find( ( page: any ) =>
+			page.title.rendered.toLowerCase() === 'checkout'
 		);
 
 		if ( checkoutPage ) {
@@ -94,6 +95,7 @@ test.describe( 'WC Remove Billing Address - Blocks Checkout (Plugin has NO effec
 	} );
 
 	test( 'Free product, no shipping: billing address fields are still shown in blocks checkout', async ( { page } ) => {
+
 		// Add free virtual product to cart
 		await page.goto( `/?add-to-cart=${freeProductId}` );
 		await page.waitForLoadState( 'networkidle' );
@@ -107,7 +109,7 @@ test.describe( 'WC Remove Billing Address - Blocks Checkout (Plugin has NO effec
 
 		// Plugin has NO effect on blocks - billing address fields should still be visible
 		// The blocks checkout uses its own field management, not the woocommerce_billing_fields filter
-		
+
 		// Look for blocks-specific billing field selectors
 		const billingFieldSelectors = [
 			'[id*="billing-address"][id*="address_1"], [name*="billingAddress"][name*="address_1"]',
@@ -164,10 +166,10 @@ test.describe( 'WC Remove Billing Address - Blocks Checkout (Plugin has NO effec
 		}
 
 		// Try to find and click the place order button
-		const placeOrderButton = page.locator( 
+		const placeOrderButton = page.locator(
 			'.wc-block-components-checkout-place-order-button, [class*="place-order"], button:has-text("Place order")'
 		);
-		
+
 		if ( await placeOrderButton.count() > 0 && await placeOrderButton.first().isEnabled() ) {
 			await placeOrderButton.first().click();
 			await page.waitForLoadState( 'networkidle' );
@@ -176,18 +178,18 @@ test.describe( 'WC Remove Billing Address - Blocks Checkout (Plugin has NO effec
 			// Should either show validation errors or still be on checkout page
 			// (not reach order confirmation like the shortcode version does)
 			const currentUrl = page.url();
-			
+
 			// Look for validation errors or still being on checkout
-			const hasValidationErrors = await page.locator( 
-				'.wc-block-components-validation-error, [class*="error"], [class*="notice"]' 
+			const hasValidationErrors = await page.locator(
+				'.wc-block-components-validation-error, [class*="error"], [class*="notice"]'
 			).count() > 0;
-			
+
 			const stillOnCheckout = currentUrl.includes( 'checkout' ) && !currentUrl.includes( 'order-received' );
-			
+
 			// Either we get validation errors OR we're still on checkout (not order confirmation)
 			// This demonstrates the plugin doesn't work with blocks - blocks still require full address
 			expect( hasValidationErrors || stillOnCheckout ).toBe( true );
-			
+
 			if ( !currentUrl.includes( 'order-received' ) ) {
 				console.log( 'Blocks checkout correctly prevented order completion without full billing address' );
 			}
@@ -231,7 +233,7 @@ test.describe( 'WC Remove Billing Address - Blocks Checkout (Plugin has NO effec
 
 		expect( visibleFieldsCount ).toBeGreaterThan( 0 );
 
-		// Verify this is a paid order  
+		// Verify this is a paid order
 		const total = page.locator( '.wc-block-components-totals-item__value, .wc-block-formatted-money-amount' );
 		if ( await total.count() > 0 ) {
 			await expect( total.last() ).toContainText( '$19.99' );

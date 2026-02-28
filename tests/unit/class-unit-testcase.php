@@ -1,12 +1,14 @@
 <?php
 
-namespace WC_Remove_Billing;
+namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
+use Codeception\Test\Unit;
 use Psr\Log\LoggerInterface;
 use WP_Mock;
+use function Patchwork\restoreAll;
 
-class Unit_Testcase extends \Codeception\Test\Unit {
+class Unit_Testcase extends Unit {
 
 	protected LoggerInterface $logger;
 
@@ -19,6 +21,6 @@ class Unit_Testcase extends \Codeception\Test\Unit {
 	protected function tearDown(): void {
 		parent::_tearDown();
 		WP_Mock::tearDown();
-		\Patchwork\restoreAll();
+		restoreAll();
 	}
 }

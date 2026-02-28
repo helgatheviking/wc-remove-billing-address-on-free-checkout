@@ -11,7 +11,7 @@ modules:
             domain: "%TEST_SITE_WP_DOMAIN%"
             adminEmail: "%TEST_SITE_ADMIN_EMAIL%"
             title: "WC Remove Billing Address Tests"
-            plugins: ["wc-remove-billing-address-on-free-checkout/wc-remove-billing-address-on-free-checkout.php", "woocommerce/woocommerce.php"]
+            plugins: ["woocommerce/woocommerce.php"]
             activatePlugins: []
             WP_CONTENT_DIR: wp-content
 bootstrap: _bootstrap.php

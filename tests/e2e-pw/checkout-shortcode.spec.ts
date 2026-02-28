@@ -23,7 +23,8 @@
  * Gateways are registered in {@see development-plugin.php}.
  */
 // @ts-ignore
-import { test, expect, Page } from '@wordpress/e2e-test-utils-playwright';
+import { test, expect, Page, RequestUtils } from '@wordpress/e2e-test-utils-playwright';
+import { useShortcodeCheckout } from "./helpers/checkout";
 
 const SHORTCODE_CHECKOUT_CONTENT =
 	'<!-- wp:shortcode -->[woocommerce_checkout]<!-- /wp:shortcode -->';
@@ -205,22 +206,11 @@ async function placeOrder( page: Page ) {
 test.describe( 'Shortcode Checkout – Billing/Shipping Field Visibility', () => {
 
 	test.beforeAll( async ( { requestUtils } ) => {
-		// Set checkout page to use shortcode.
-		const pages = await requestUtils.rest( {
-			method: 'GET',
-			path: '/wp/v2/pages',
-			data: { search: 'Checkout', per_page: 100 },
-		} );
-		const checkoutPage = pages.find(
-			( p: any ) => p.title.rendered.toLowerCase() === 'checkout'
-		);
-		if ( checkoutPage ) {
-			await requestUtils.rest( {
-				method: 'POST',
-				path: `/wp/v2/pages/${ checkoutPage.id }`,
-				data: { content: SHORTCODE_CHECKOUT_CONTENT },
-			} );
-		}
+
+		// wp option set woocommerce_ship_to_destination shipping|billing|billing_only
+
+
+		await useShortcodeCheckout( requestUtils );
 
 		// Look up product IDs via WooCommerce Store API (public, no auth needed).
 		for ( const [ key, name ] of Object.entries( PRODUCTS ) ) {
@@ -312,7 +302,7 @@ test.describe( 'Shortcode Checkout – Billing/Shipping Field Visibility', () =>
 		await selectGateway( page, 'test_gateway_one' );
 
 		await expectBillingIdentityShown( page );
-		await expectBillingAddressShown( page );
+		await expectBillingAddressRemoved( page );
 		await expectShippingShown( page );
 
 		await placeOrder( page );
