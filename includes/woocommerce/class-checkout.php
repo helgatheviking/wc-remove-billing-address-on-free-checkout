@@ -1,4 +1,9 @@
 <?php
+/**
+ * Filter the fields on the shortcode checkout.
+ *
+ * @package kia/wc-remove-billing-address-on-free-checkout
+ */
 
 namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce;
 
@@ -6,6 +11,9 @@ use Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils;
 use WC_Payment_Gateway;
 use WC_Payment_Gateways;
 
+/**
+ * Filters fields in PHP; enqueues JS to re-filter when payment gateway is changed; re-renders the checkout HTML.
+ */
 class Checkout {
 
 	/**
@@ -197,10 +205,12 @@ class Checkout {
 	 *
 	 * @hooked woocommerce_billing_fields
 	 *
-	 * @param array $fields The billing fields.
-	 * @return array
+	 * @phpstan-type Field array{type?:string, label:string, required:bool, class:array<string>, validate?:array<string>, autocomplete?:string, priority:int}
+	 *
+	 * @param array<Field> $fields The billing fields.
+	 * @return array<Field>
 	 */
-	public function remove_billing_address_fields_for_free_checkout( $fields ) {
+	public function remove_billing_address_fields_for_free_checkout( array $fields ): array {
 
 		if ( is_admin() && ! wp_doing_ajax() ) {
 			return $fields;
@@ -209,8 +219,6 @@ class Checkout {
 		if ( ! WC()->cart ) {
 			return $fields;
 		}
-
-		$g = $GLOBALS;
 
 		if ( ! $this->is_checkout_page() ) {
 			return $fields;
@@ -324,13 +332,12 @@ class Checkout {
 		return $fields;
 	}
 
-
 	/**
 	 * Register the JavaScript files used for WooCommerce.
 	 *
-	 * @hooked wp_enqueue_scripts
+	 * The {@see assets/shortcode-checkout.js} script fires the `update_checkout` trigger when a selected gateway is changed
 	 *
-	 * This JS fires the `update_checkout` trigger when a selected gateway is changed
+	 * @hooked wp_enqueue_scripts
 	 */
 	public function enqueue_scripts(): void {
 
@@ -341,25 +348,24 @@ class Checkout {
 			$version = "{$time}";
 		}
 
-		// $script_url = plugins_url( 'build/checkout/index.js', WP_PLUGIN_DIR . '/bh-wc-venmo-gateway/bh-wc-venmo-gateway.php' );
 		$script_url = plugins_url( '/assets/shortcode-checkout.js', dirname( __DIR__ ) );
 
-		// wp_enqueue_script( 'bh-wp-account-and-login-ux-woocommerce-checkout', plugin_dir_url( __FILE__ ) . '/../assets/shortcode-checkout.js', array( 'jquery' ), $version, false );
-		wp_enqueue_script( 'bh-wp-account-and-login-ux-woocommerce-checkout', $script_url, array( 'jquery' ), $version, false );
+		wp_enqueue_script( 'wc-remove-billing-address-on-free-checkout', $script_url, array( 'jquery' ), $version, false );
 	}
 
 	/**
-	 * rerender the billing fields on js update_cart
+	 * Re-render the billing fields when the checkout JavaScript `update_cart` event is fired.
 	 *
-	 * The fragments usually only contain `.woocommerce-checkout-review-order-table` and `.woocommerce-checkout-payment`.
+	 * The fragments usually only contain `.woocommerce-checkout-review-order-table` and
+	 * `.woocommerce-checkout-payment`. Other sections of the checkout can be added to the response to be replaced too.
 	 *
 	 * @hooked woocommerce_update_order_review_fragments
 	 * @see woocommerce_checkout_update_order_review
 	 *
-	 * @param $fragments
-	 * @return mixed
+	 * @param array<string, string> $fragments CSS selector : HTML to set at checkout.
+	 * @return  array<string, string>
 	 */
-	public function rerender_billing_fields( $fragments ) {
+	public function rerender_billing_fields( array $fragments ): array {
 
 		$checkout = WC()->checkout();
 
@@ -375,23 +381,5 @@ class Checkout {
 		$fragments['.woocommerce-billing-fields'] = $woocommerce_billing_fields;
 
 		return $fragments;
-	}
-
-
-	/**
-	 * Remove billing fields per gateway.
-	 *
-	 * @deprecated 2.0.0 Logic merged into {@see remove_billing_address_fields_for_free_checkout()}
-	 *             which hooks on `woocommerce_billing_fields` so the AJAX fragment
-	 *             replacement picks up the changes.
-	 *
-	 * @hooked woocommerce_checkout_fields
-	 *
-	 * @param array $fields All checkout fields.
-	 * @return array
-	 */
-	public function remove_billing_fields_per_gateway( array $fields ): array {
-		// No-op: logic now lives in remove_billing_address_fields_for_free_checkout().
-		return $fields;
 	}
 }
