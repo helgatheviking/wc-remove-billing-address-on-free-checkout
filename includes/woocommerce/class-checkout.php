@@ -169,6 +169,19 @@ class Checkout {
 	}
 
 	/**
+	 * Determine are we working with a gateway whose fields will be removed.
+	 *
+	 * @return ?bool `null` when the gateway cannot be determined.
+	 */
+	protected function chosen_gateway_requires_billing_fields(): ?bool {
+		$chosen_payment_gateway = $this->get_chosen_payment_gateway();
+		if ( ! $chosen_payment_gateway ) {
+			return null;
+		}
+		return $this->gateway_requires_billing_fields( $chosen_payment_gateway );
+	}
+
+	/**
 	 * Check whether the chosen gateway declares that it does not need billing fields.
 	 *
 	 * A gateway opts out by setting the public property `$require_billing_fields = false`,
@@ -226,12 +239,15 @@ class Checkout {
 
 		$gateway_id = $this->get_chosen_payment_gateway();
 
-		$cart_total         = floatval( WC()->cart->get_total( 'edit' ) );
-		$is_free_virtual    = ( 0.0 === $cart_total && ! WC()->cart->needs_shipping() );
+		$is_virtual         = ! WC()->cart->needs_shipping();
+		$is_free_virtual    = $this->is_free_cart() && $is_virtual;
 		$gateway_no_billing = $gateway_id && ! $this->gateway_requires_billing_fields( $gateway_id );
 
-		// Neither condition met — leave fields untouched.
-		if ( ! $is_free_virtual && ! $gateway_no_billing ) {
+		// Leave fields untouched.
+		if ( ! $is_virtual && wc_ship_to_billing_address_only() ) {
+			return $fields;
+		}
+		if ( ! $this->is_free_cart() && ! $gateway_no_billing ) {
 			return $fields;
 		}
 
@@ -296,6 +312,30 @@ class Checkout {
 	}
 
 	/**
+	 * Is the order total zero?
+	 */
+	protected function is_free_cart(): bool {
+
+		if ( ! function_exists( 'WC' ) || is_null( WC()->cart ) ) {
+			return false;
+		}
+
+		return 0.0 === floatval( WC()->cart->get_total( 'edit' ) );
+	}
+
+	/**
+	 * Check does the cart need shipping.
+	 */
+	protected function is_needs_shipping(): bool {
+
+		if ( ! function_exists( 'WC' ) || is_null( WC()->cart ) ) {
+			return false;
+		}
+
+		return WC()->cart->needs_shipping();
+	}
+
+	/**
 	 * Remove shipping fields when cart contains only virtual/downloadable products.
 	 *
 	 * WooCommerce handles this partially via needs_shipping(), but explicitly removing
@@ -344,8 +384,7 @@ class Checkout {
 		if ( 'production' === wp_get_environment_type() ) {
 			$version = '2.0.0';
 		} else {
-			$time    = time();
-			$version = "{$time}";
+			$version = (string) time();
 		}
 
 		$script_url = plugins_url( '/assets/shortcode-checkout.js', dirname( __DIR__ ) );
@@ -375,11 +414,149 @@ class Checkout {
 
 		$woocommerce_billing_fields = ob_get_clean();
 
-		// TODO: Maybe manipulate the shipping fragment.
-		// E.g. "Ship to a different address?" should not be an option if we have removed billing address but there is a product to ship.
+		if ( $this->is_free_cart() ) {
+			$woocommerce_billing_fields = $this->set_billing_fragment_title_to_shipping_only( $woocommerce_billing_fields );
+		}
 
 		$fragments['.woocommerce-billing-fields'] = $woocommerce_billing_fields;
 
 		return $fragments;
+	}
+
+	/**
+	 * Replace "Billing & Shipping" with just "Shipping".
+	 *
+	 * @param string $shortcode_checkout_html HTML from the shortcode checkout.
+	 */
+	protected function set_billing_fragment_title_to_shipping_only( string $shortcode_checkout_html ): string {
+		return str_replace( '<h3>Billing &amp; Shipping</h3>', '<h3>Shipping</h3>', $shortcode_checkout_html );
+	}
+
+	/**
+	 * Replace "Billing & Shipping" with just "Shipping" for free carts, i.e. when WooCommerce has already removed
+	 * the shipping fields and are only displaying the billing to use as shipping.
+	 *
+	 * @hooked do_shortcode_tag
+	 *
+	 * @param string $output Shortcode output.
+	 * @param string $tag Shortcode name.
+	 * @param array  $attr Shortcode attributes array, can be empty if the original arguments string cannot be parsed.
+	 * @param array  $m Regular expression match array.
+	 */
+	public function set_shortcode_fragment_title( $output, $tag, $attr, $m ) {
+
+		if ( 'woocommerce_checkout' !== $tag ) {
+			return $output;
+		}
+
+		if ( ! $this->is_free_cart() ) {
+			return $output;
+		}
+
+		return $this->set_billing_fragment_title_to_shipping_only( $output );
+	}
+
+	/**
+	 *
+	 *
+	 * @hooked do_shortcode_tag
+	 *
+	 * @param string       $output Shortcode output.
+	 * @param string       $tag Shortcode name.
+	 * @param array<mixed> $attr Shortcode attributes array, can be empty if the original arguments string cannot be parsed.
+	 * @param array        $m Regular expression match array.
+	 */
+	public function set_shortcode_ship_to_different_address( string $output, string $tag, array $attr, array $m ) {
+		if ( 'woocommerce_checkout' !== $tag ) {
+			return $output;
+		}
+
+		if ( $this->get_chosen_payment_gateway() && $this->chosen_gateway_requires_billing_fields() ) {
+			return $output;
+		}
+
+		return $this->replace_ship_to_different_address_checked( $output );
+	}
+
+	/**
+	 * If we remove the billing fields and require shipping, the option "[ ] Ship to a different address?" should be removed.
+	 *
+	 * @see woocommerce/templates/checkout/form-shipping.php
+	 *
+	 * @param array<string, string> $fragments CSS selector : HTML to set at checkout.
+	 */
+	public function rerender_shipping_fields( array $fragments ): array {
+
+		$checkout = WC()->checkout();
+
+		ob_start();
+
+		wc_get_template( 'checkout/form-shipping.php', array( 'checkout' => $checkout ) );
+
+		$woocommerce_shipping_fields = ob_get_clean();
+
+		if ( $this->is_needs_shipping()
+			&&
+			( $this->is_free_cart() || ! $this->chosen_gateway_requires_billing_fields() )
+		) {
+			$woocommerce_shipping_fields = $this->replace_ship_to_different_address_checked( $woocommerce_shipping_fields );
+		}
+
+		// TODO: Remove `woocommerce-additional-fields`.
+
+		$fragments['.woocommerce-shipping-fields'] = $woocommerce_shipping_fields;
+
+		return $fragments;
+	}
+
+	/**
+	 * "Ship to a different address?" should not be an option if we have removed billing address but there is a product to ship.
+	 *
+	 * ```
+	 * <h3 id="ship-to-different-address">
+	 *  <label class="woocommerce-form__label woocommerce-form__label-for-checkbox checkbox">
+	 *   <input id="ship-to-different-address-checkbox" class="woocommerce-form__input woocommerce-form__input-checkbox input-checkbox" checked="checked" type="checkbox" name="ship_to_different_address" value="1"> <span>Ship to a different address?</span>
+	 *  </label>
+	 * </h3>
+	 * ```
+	 *
+	 * @param string $shipping_fields_html The shortcode checkout HTML shipping form.
+	 */
+	protected function replace_ship_to_different_address_checked( string $shipping_fields_html ): string {
+
+		/**
+		 * `ship_to_different_address` is used in {@see \WC_Checkout::get_posted_data()} so is required.
+		 */
+		$hidden_checked_checkbox = '<input id="ship-to-different-address-checkbox" checked="checked" type="checkbox" name="ship_to_different_address" value="1" style="display:none;">';
+
+		return preg_replace(
+			'/(<h3 id="ship-to-different-address">)([\S\s]*?)(<\/h3>)/m',
+			'$1' . $hidden_checked_checkbox . __( 'Shipping', 'woocommerce' ) . '$3',
+			$shipping_fields_html
+		);
+	}
+
+	/**
+	 * If we're going to remove the billing fields, we must show the shipping fields
+	 *
+	 * @see wc_ship_to_billing_address_only()
+	 * @see woocommerce_ship_to_destination
+	 * @see woocommerce/templates/checkout/form-shipping.php
+	 * @hooked woocommerce_ship_to_different_address_checked
+	 *
+	 * @param int $val The WooCommerce template passes `1`|`0`, but it seems plausible other plugins might return bools.
+	 * @return int|bool|string Will be passed to {@see checked()} to generate the "is-checked" checkbox input HTML.
+	 */
+	public function force_display_shipping_form( $val ) {
+
+		if ( ! $this->is_needs_shipping() ) {
+			return $val;
+		}
+
+		if ( $this->is_needs_shipping() && ( $this->is_free_cart() || ! $this->chosen_gateway_requires_billing_fields() ) ) {
+			return (int) true;
+		}
+
+		return $val;
 	}
 }

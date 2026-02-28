@@ -53,5 +53,11 @@ class WC_Remove_Billing_Address_On_Free_Checkout {
 
 		add_action( 'wp_enqueue_scripts', array( $checkout, 'enqueue_scripts' ) );
 		add_filter( 'woocommerce_update_order_review_fragments', array( $checkout, 'rerender_billing_fields' ) );
+		add_filter( 'woocommerce_update_order_review_fragments', array( $checkout, 'rerender_shipping_fields' ) );
+
+		add_filter( 'woocommerce_ship_to_different_address_checked', array( $checkout, 'force_display_shipping_form' ), 10, 1 );
+
+		add_filter( 'do_shortcode_tag', array( $checkout, 'set_shortcode_fragment_title' ), 10, 4 );
+		add_filter( 'do_shortcode_tag', array( $checkout, 'set_shortcode_ship_to_different_address' ), 10, 4 );
 	}
 }

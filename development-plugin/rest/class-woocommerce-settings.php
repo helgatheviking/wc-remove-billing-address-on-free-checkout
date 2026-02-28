@@ -20,9 +20,9 @@ class WooCommerce_Settings {
 	}
 
 	/**
-	 * Expose settings through the REST API.
+	 * Expose additional settings through the REST API.
 	 *
-	 * `woocommerce_checkout_page_id`
+	 * `woocommerce_ship_to_destination`
 	 *
 	 * @hooked rest_pre_dispatch
 	 * @see register_setting()

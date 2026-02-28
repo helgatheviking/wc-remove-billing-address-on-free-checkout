@@ -45,6 +45,12 @@ const BILLING_IDENTITY_SELECTORS = [
 	'#billing_email',
 ] as const;
 
+const SHIPPING_ADDRESS_SELECTORS = [
+	'#shipping_address_1',
+	'#shipping_city',
+	'#shipping_postcode',
+] as const;
+
 
 const ADDRESS_SELECTORS_AND_VALUES = {
 	'#billing_first_name': 'Brian',
@@ -163,9 +169,9 @@ async function expectBillingIdentityShown( page: Page ) {
  * Assert shipping fields are visible.
  */
 async function expectShippingShown( page: Page ) {
-	await expect(
-		page.locator( '#ship-to-different-address-checkbox, #shipping_first_name' ).first()
-	).toBeVisible();
+	for ( const selector of SHIPPING_ADDRESS_SELECTORS ) {
+		await expect( page.locator( selector ) ).toBeVisible();
+	}
 }
 
 /**
@@ -205,9 +211,9 @@ async function placeOrder( page: Page ) {
 }
 
 const SHIPPING_DESTINATION_OPTIONS = {
-	SHIPPING: 'shipping', // "Default to customer shipping address".
-	BILLING: 'billing', // "Default to customer billing address"
-	BILLING_ONLY: 'billing_only', // "Force shipping to the customer billing addres"
+	SHIPPING: 'shipping', // "Default to customer shipping address". – shows the shipping address form
+	BILLING: 'billing', // "Default to customer billing address" – hides the shipping address form until "Ship to another address" is checked
+	BILLING_ONLY: 'billing_only', // "Force shipping to the customer billing addres" – only displays the billing form, ships to that address.
 } as const;
 
 async function updateShippingDestinationSetting(requestUtils: RequestUtils,  value: string ): Promise<void> {
@@ -318,7 +324,8 @@ test.describe( 'Shortcode Checkout – Billing/Shipping Field Visibility', () =>
 		await placeOrder( page );
 	} );
 
-	test( 'Free Shipped + Gateway 2 (no billing req): billing address shown (no gateways for $0 cart), shipping shown', async ( {
+	//
+	test( 'Free Shipped + Gateway 2 (no billing req): billing address not shown, shipping shown', async ( {
 		page,
 	} ) => {
 		await addToCartAndCheckout( page, productIds.freeShipped );
@@ -327,7 +334,7 @@ test.describe( 'Shortcode Checkout – Billing/Shipping Field Visibility', () =>
 
 		await expectBillingIdentityShown( page );
 		// Billing remains because no gateway can be selected to opt out.
-		await expectBillingAddressShown( page );
+		await expectBillingAddressRemoved( page );
 		await expectShippingShown( page );
 
 		await placeOrder( page );
