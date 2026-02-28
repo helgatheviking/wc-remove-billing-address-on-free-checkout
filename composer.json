@@ -42,7 +42,9 @@
             ]
         },
         "classmap": [
-            "tests/_support"
+            "tests/_support",
+            "tests/unit",
+            "tests/wpunit"
         ]
     },
     "repositories": {
@@ -100,6 +102,10 @@
         "cs-fix": [
             "phpcbf || true",
             "@cs"
+        ],
+        "cs-fix-strict": [
+            "phpcbf || true",
+            "@cs-strict"
         ],
         "cs-strict": [
             "phpcs || true",
