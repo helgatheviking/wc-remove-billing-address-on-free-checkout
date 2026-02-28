@@ -25,6 +25,7 @@
 // @ts-ignore
 import { test, expect, Page, RequestUtils } from '@wordpress/e2e-test-utils-playwright';
 import { useShortcodeCheckout } from "./helpers/checkout";
+import {updateSetting} from "./helpers/general/rest/settings";
 
 const SHORTCODE_CHECKOUT_CONTENT =
 	'<!-- wp:shortcode -->[woocommerce_checkout]<!-- /wp:shortcode -->';
@@ -203,12 +204,21 @@ async function placeOrder( page: Page ) {
 	).toBeVisible();
 }
 
+const SHIPPING_DESTINATION_OPTIONS = {
+	SHIPPING: 'shipping', // "Default to customer shipping address".
+	BILLING: 'billing', // "Default to customer billing address"
+	BILLING_ONLY: 'billing_only', // "Force shipping to the customer billing addres"
+} as const;
+
+async function updateShippingDestinationSetting(requestUtils: RequestUtils,  value: string ): Promise<void> {
+	updateSetting(requestUtils,'woocommerce_ship_to_destination', value);
+}
+
 test.describe( 'Shortcode Checkout – Billing/Shipping Field Visibility', () => {
 
 	test.beforeAll( async ( { requestUtils } ) => {
 
-		// wp option set woocommerce_ship_to_destination shipping|billing|billing_only
-
+		await updateShippingDestinationSetting( requestUtils, SHIPPING_DESTINATION_OPTIONS.SHIPPING )
 
 		await useShortcodeCheckout( requestUtils );
 
