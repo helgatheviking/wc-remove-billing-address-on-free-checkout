@@ -2,10 +2,42 @@
 
 namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce;
 
+use Automattic\WooCommerce\Blocks\Utils\CartCheckoutUtils;
 use WC_Payment_Gateway;
 use WC_Payment_Gateways;
 
 class Checkout {
+
+	/**
+	 * Is the current request a checkout page request / ajax checkout request?
+	 *
+	 * This is used to ensure we only remove the fields at checkout, not at the my-account page.
+	 *
+	 * @see \WC_AJAX::update_order_review()
+	 */
+	protected function is_checkout_page(): bool {
+
+		if ( wp_doing_ajax() ) {
+
+			/**
+			 * Nonce already checked in {@see \WC_AJAX::update_order_review()}.
+			 *
+			 * phpcs:disable WordPress.Security.NonceVerification.Recommended
+			 */
+			$wc_ajax = isset( $_REQUEST['wc-ajax'] ) && is_string( $_REQUEST['wc-ajax'] )
+				? sanitize_key( wp_unslash( $_REQUEST['wc-ajax'] ) )
+				: null;
+			if ( in_array( $wc_ajax, array( 'checkout', 'update_order_review' ), true ) ) {
+				return true;
+			}
+		}
+
+		if ( ! class_exists( CartCheckoutUtils::class ) ) {
+			return false;
+		}
+
+		return CartCheckoutUtils::is_checkout_page();
+	}
 
 	/**
 	 * Default fields to remove (the original plugin behavior).
@@ -30,7 +62,7 @@ class Checkout {
 	/**
 	 * Get the chosen payment gateway at checkout.
 	 *
-	 * @return string|null The gateway ID, or null if not determinable.
+	 * @return ?string The gateway ID, or null if not determinable.
 	 */
 	protected function get_chosen_payment_gateway(): ?string {
 		if ( ! WC()->session ) {
@@ -178,10 +210,16 @@ class Checkout {
 			return $fields;
 		}
 
+		$g = $GLOBALS;
+
+		if ( ! $this->is_checkout_page() ) {
+			return $fields;
+		}
+
 		$gateway_id = $this->get_chosen_payment_gateway();
 
-		$cart_total      = floatval( WC()->cart->get_total( 'edit' ) );
-		$is_free_virtual = ( 0.0 === $cart_total && ! WC()->cart->needs_shipping() );
+		$cart_total         = floatval( WC()->cart->get_total( 'edit' ) );
+		$is_free_virtual    = ( 0.0 === $cart_total && ! WC()->cart->needs_shipping() );
 		$gateway_no_billing = $gateway_id && ! $this->gateway_requires_billing_fields( $gateway_id );
 
 		// Neither condition met — leave fields untouched.
@@ -262,7 +300,6 @@ class Checkout {
 	 */
 	public function remove_shipping_fields_for_virtual_products( $fields ) {
 
-
 		// Don't modify anything when the admin is viewing settings.
 		if ( is_admin() && ! wp_doing_ajax() ) {
 			return $fields;
@@ -273,6 +310,10 @@ class Checkout {
 		}
 
 		if ( ! $this->cart_contains_only_virtual_products() ) {
+			return $fields;
+		}
+
+		if ( ! $this->is_checkout_page() ) {
 			return $fields;
 		}
 
@@ -290,7 +331,6 @@ class Checkout {
 	 * @hooked wp_enqueue_scripts
 	 *
 	 * This JS fires the `update_checkout` trigger when a selected gateway is changed
-	 *
 	 */
 	public function enqueue_scripts(): void {
 
@@ -301,13 +341,11 @@ class Checkout {
 			$version = "{$time}";
 		}
 
-//		$script_url = plugins_url( 'build/checkout/index.js', WP_PLUGIN_DIR . '/bh-wc-venmo-gateway/bh-wc-venmo-gateway.php' );
-		$script_url = plugins_url( '/assets/shortcode-checkout.js', dirname(__DIR__)  );
+		// $script_url = plugins_url( 'build/checkout/index.js', WP_PLUGIN_DIR . '/bh-wc-venmo-gateway/bh-wc-venmo-gateway.php' );
+		$script_url = plugins_url( '/assets/shortcode-checkout.js', dirname( __DIR__ ) );
 
-
-//		wp_enqueue_script( 'bh-wp-account-and-login-ux-woocommerce-checkout', plugin_dir_url( __FILE__ ) . '/../assets/shortcode-checkout.js', array( 'jquery' ), $version, false );
+		// wp_enqueue_script( 'bh-wp-account-and-login-ux-woocommerce-checkout', plugin_dir_url( __FILE__ ) . '/../assets/shortcode-checkout.js', array( 'jquery' ), $version, false );
 		wp_enqueue_script( 'bh-wp-account-and-login-ux-woocommerce-checkout', $script_url, array( 'jquery' ), $version, false );
-
 	}
 
 	/**

@@ -22,6 +22,7 @@
  * Products are created in {@see initialize-internal.sh}.
  * Gateways are registered in {@see development-plugin.php}.
  */
+// @ts-ignore
 import { test, expect, Page } from '@wordpress/e2e-test-utils-playwright';
 
 const SHORTCODE_CHECKOUT_CONTENT =
@@ -361,5 +362,105 @@ test.describe( 'Shortcode Checkout – Billing/Shipping Field Visibility', () =>
 		await expectShippingShown( page );
 
 		await placeOrder( page );
+	} );
+
+	// ──────────────────────────────────────────────────────────────────
+	// DATA PRESERVATION
+	// Hiding billing fields at checkout must NOT delete saved customer
+	// address data from the database.
+	// ──────────────────────────────────────────────────────────────────
+
+	test( 'Paid Virtual + Gateway 2: saved customer billing address is preserved in the database after checkout', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const timestamp = Date.now();
+		const customerData = {
+			username: 'address_test_' + timestamp,
+			email: `address_test_${ timestamp }@example.com`,
+			password: 'password',
+			first_name: 'Jane',
+			last_name: 'Doe',
+			billing: {
+				first_name: 'Jane',
+				last_name: 'Doe',
+				address_1: '742 Evergreen Terrace',
+				city: 'Springfield',
+				state: 'IL',
+				postcode: '62704',
+				country: 'US',
+				email: `address_test_${ timestamp }@example.com`,
+				phone: '5551234567',
+			},
+		};
+
+		// 1. Create customer via WP REST.
+		const user = await requestUtils.rest( {
+			method: 'POST',
+			path: '/wp/v2/users',
+			data: {
+				username: customerData.username,
+				email: customerData.email,
+				password: customerData.password,
+				first_name: customerData.first_name,
+				last_name: customerData.last_name,
+				roles: [ 'customer' ],
+			},
+		} );
+		const userId = user.id;
+
+		// 2. Set the WooCommerce customer address
+		const response = await requestUtils.rest({
+			method: 'PUT',
+			path: `/wc/v3/customers/${ userId }`,
+			data: {"billing": customerData.billing, "shipping":customerData.billing}
+		}); expect( response.ok );
+
+		// 3. Log in as the customer.
+		await page.context().clearCookies();
+		await page.goto( '/my-account/' );
+		await page.waitForLoadState( 'networkidle' );
+		await page.fill( '#username', customerData.username );
+		await page.fill( '#password', customerData.password );
+		await page.click( 'button[name="login"]' );
+		await page.waitForLoadState( 'networkidle' );
+		await expect( page.locator( '.woocommerce-MyAccount-content' ) ).toBeVisible( { timeout: 10000 } );
+
+		// 4. Now place an order with gw2 (billing hidden).
+		await page.goto( `/?add-to-cart=${ productIds.paidVirtual }` );
+		await page.waitForLoadState( 'networkidle' );
+		await page.goto( '/checkout/' );
+		await page.waitForLoadState( 'networkidle' );
+		await selectGateway( page, 'test_gateway_two' );
+
+		// Billing address fields should be hidden.
+		await expectBillingAddressRemoved( page );
+
+		// Only identity fields visible — fill them.
+		await page.fill( '#billing_first_name', customerData.billing.first_name );
+		await page.fill( '#billing_last_name', customerData.billing.last_name );
+		await page.fill( '#billing_email', customerData.billing.email );
+
+		await page.click( '#place_order' );
+		await page.waitForURL( /order-received/, { timeout: 30000 } );
+		await expect(
+			page.locator( '.woocommerce-thankyou-order-received, .woocommerce-order-received' ).first()
+		).toBeVisible();
+
+		// 5. Verify the saved billing address is still intact.
+		//    Navigate to My Account → Edit Address to check stored values.
+		await page.goto( '/my-account/edit-address/billing/' );
+		await page.waitForLoadState( 'networkidle' );
+
+		await expect( page.locator( '#billing_address_1' ) ).toHaveValue( '742 Evergreen Terrace' );
+		await expect( page.locator( '#billing_city' ) ).toHaveValue( 'Springfield' );
+		await expect( page.locator( '#billing_postcode' ) ).toHaveValue( '62704' );
+		await expect( page.locator( '#billing_phone' ) ).toHaveValue( '5551234567' );
+
+		// 6. Clean up: delete the test customer.
+		await requestUtils.rest( {
+			method: 'DELETE',
+			path: `/wp/v2/users/${ userId }?force=true&reassign=1`,
+		} );
 	} );
 } );
