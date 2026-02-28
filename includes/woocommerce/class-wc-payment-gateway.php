@@ -1,9 +1,18 @@
 <?php
+/**
+ * Add the plugin's settings to the admin UI on payment gateway pages.
+ *
+ * @package kia/wc-remove-billing-address-on-free-checkout
+ */
 
 namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce;
 
 use WC_Payment_Gateways;
 
+/**
+ * @see \WC_Payment_Gateway
+ * @see \WC_Settings_API
+ */
 class WC_Payment_Gateway {
 
 	/**
@@ -84,7 +93,7 @@ class WC_Payment_Gateway {
 		$form_fields['kia_free_checkout_section'] = array(
 			'title'       => __( 'Free Checkout Billing Fields', 'wc-remove-billing-address-on-free-checkout' ),
 			'type'        => 'title',
-			'description' => __( 'Choose which billing fields to remove when the checkout total is $0.00 and no shipping is required. If none are selected, the default fields (address, city, state, zip, country, phone) will be removed.', 'wc-remove-billing-address-on-free-checkout' ),
+			'description' => __( 'Choose which billing fields to remove or make optional when the checkout total is $0.00 and no shipping is required. If none are selected, the default fields (address, city, state, zip, country, phone) will be removed.', 'wc-remove-billing-address-on-free-checkout' ),
 		);
 
 		$form_fields['kia_free_checkout_remove_fields'] = array(
@@ -96,6 +105,17 @@ class WC_Payment_Gateway {
 			'desc_tip'    => true,
 			'options'     => $field_options,
 			'default'     => $this->get_default_fields_to_remove(),
+		);
+
+		$form_fields['kia_free_checkout_optional_fields'] = array(
+			'title'       => __( 'Make these billing fields optional on free checkout', 'wc-remove-billing-address-on-free-checkout' ),
+			'type'        => 'multiselect',
+			'class'       => 'wc-enhanced-select',
+			'css'         => 'width: 400px;',
+			'description' => __( 'Selected fields will be shown but not required when the cart total is free and no shipping is needed.', 'wc-remove-billing-address-on-free-checkout' ),
+			'desc_tip'    => true,
+			'options'     => $field_options,
+			'default'     => array(),
 		);
 
 		return $form_fields;
