@@ -1,5 +1,5 @@
 <?php
-/*
+/**
  * Plugin Name: Remove WooCommerce billing address for free checkout
  * Plugin URI:  https://github.com/helgatheviking/wc-remove-billing-address-on-free-checkout
  * Description: Remove billing address fields from checkout when cart total is free. Per-gateway settings for which fields to remove or make optional.
@@ -11,11 +11,13 @@
  * WC requires at least: 7.0.0
  * WC tested up to: 9.6.0
  * Requires PHP: 8.1
+ * Requires Plugins: woocommerce
  *
  * Copyright: © 2020 Kathy Darling; 2026 Brian Henry.
  * License: GNU General Public License v3.0
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  *
+ * @package kia/wc-remove-billing-address-on-free-checkout
  */
 
 namespace KIA\WC_Remove_Billing_Address_On_FreeCheckout;
@@ -28,4 +30,4 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-( new WC_Remove_Billing_Address_On_Free_Checkout() )->register_hooks();
+add_action( 'woocommerce_loaded', fn() => ( new WC_Remove_Billing_Address_On_Free_Checkout() )->register_hooks() );
