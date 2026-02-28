@@ -1,6 +1,6 @@
 <?php
 
-namespace WC_Remove_Billing;
+namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout;
 
 use BrianHenryIE\ColorLogger\ColorLogger;
 use lucatume\WPBrowser\TestCase\WPTestCase;
