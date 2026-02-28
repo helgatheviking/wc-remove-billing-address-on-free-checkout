@@ -212,15 +212,15 @@ class Checkout {
 	 */
 	public function remove_billing_address_fields_for_free_checkout( array $fields ): array {
 
+		if ( ! $this->is_checkout_page() ) {
+			return $fields;
+		}
+
 		if ( is_admin() && ! wp_doing_ajax() ) {
 			return $fields;
 		}
 
 		if ( ! WC()->cart ) {
-			return $fields;
-		}
-
-		if ( ! $this->is_checkout_page() ) {
 			return $fields;
 		}
 
