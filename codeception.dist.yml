@@ -22,6 +22,7 @@ coverage:
     enabled: true
     include:
         - wc-remove-billing-address-on-free-checkout.php
+        - /includes/*/**.*
     exclude:
         - /*/index.php
         - /*/*.txt
