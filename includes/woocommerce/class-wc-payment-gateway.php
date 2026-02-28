@@ -2,7 +2,6 @@
 
 namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce;
 
-
 use WC_Payment_Gateways;
 
 class WC_Payment_Gateway {
@@ -59,7 +58,7 @@ class WC_Payment_Gateway {
 		foreach ( $gateway_ids as $gateway_id ) {
 			add_filter(
 				"woocommerce_settings_api_form_fields_{$gateway_id}",
-				arraY($this,'add_billing_field_settings'),
+				array( $this, 'add_billing_field_settings' ),
 				20,
 				1
 			);
@@ -101,5 +100,4 @@ class WC_Payment_Gateway {
 
 		return $form_fields;
 	}
-
 }

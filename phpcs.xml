@@ -2,9 +2,7 @@
 <ruleset name="WordPress Coding Standards for WC Remove Billing Address Plugin">
     <description>WordPress coding standards for WC Remove Billing Address on Free Checkout plugin</description>
 
-    <!-- Configs -->
-    <config name="minimum_supported_wp_version" value="6.9" />
-    <config name="testVersion" value="8.4-" />
+	<rule ref="WordPress" />
 
     <!-- Check all PHP files in directory tree by default. -->
     <arg name="extensions" value="php"/>
@@ -26,10 +24,6 @@
     <exclude-pattern>/wp-content/plugins</exclude-pattern>
     <exclude-pattern>/wp-content/themes</exclude-pattern>
     <exclude-pattern>/wp-content/uploads</exclude-pattern>
-
-    <!-- PHP version check -->
-    <rule ref="PHPCompatibilityWP" />
-    <config name="testVersion" value="8.1-"/>
 
     <!-- Do not require the object type in the comment, presuming it is strongly typed -->
     <rule ref="Squiz.Commenting.VariableComment.MissingVar">

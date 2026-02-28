@@ -22,7 +22,7 @@ namespace KIA\WC_Remove_Billing_Address_On_FreeCheckout;
 
 use KIA\WC_Remove_Billing_Address_On_Free_Checkout\WC_Remove_Billing_Address_On_Free_Checkout;
 
-if(!defined( 'ABSPATH' )){
+if ( ! defined( 'ABSPATH' ) ) {
 	return;
 }
 

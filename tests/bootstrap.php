@@ -9,7 +9,7 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Fix "sh: php: command not found" when running wpunit tests in PhpStorm
-$is_phpstorm = array_reduce($GLOBALS['argv'] ?? [], fn(bool $carry, string $arg) => $carry || str_contains($arg, 'PhpStorm'), false);
-if ($is_phpstorm) {
-	define('WP_PHP_BINARY', PHP_BINARY);
+$is_phpstorm = array_reduce( $GLOBALS['argv'] ?? array(), fn( bool $carry, string $arg ) => $carry || str_contains( $arg, 'PhpStorm' ), false );
+if ( $is_phpstorm ) {
+	define( 'WP_PHP_BINARY', PHP_BINARY );
 }
