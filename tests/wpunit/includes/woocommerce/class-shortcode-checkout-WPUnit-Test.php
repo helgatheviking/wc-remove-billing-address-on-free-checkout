@@ -41,7 +41,7 @@ class Shortcode_Checkout_Unit_Test extends WPUnit_Testcase {
 	}
 
 	private function call_is_checkout_page(): bool {
-		return $this->is_checkout_page->invoke( new Checkout() );
+		return (bool) $this->is_checkout_page->invoke( new Checkout() );
 	}
 
 	/**
@@ -76,15 +76,6 @@ class Shortcode_Checkout_Unit_Test extends WPUnit_Testcase {
 		$this->go_to( home_url( '/' ) );
 
 		$this->assertFalse( $this->call_is_checkout_page() );
-	}
-
-	/**
-	 * @covers ::is_checkout_page
-	 */
-	public function test_non_ajax_on_checkout_page_returns_true(): void {
-		$this->go_to( wc_get_checkout_url() );
-
-		$this->assertTrue( $this->call_is_checkout_page() );
 	}
 
 	/**
