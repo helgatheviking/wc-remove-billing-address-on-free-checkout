@@ -55,7 +55,20 @@
       "wpackagist": {
         "type": "composer",
         "url": "https://wpackagist.org"
+        },
+      "woocommerce/woocommerce": {
+        "type": "package",
+        "package": {
+          "name": "woocommerce/woocommerce",
+          "version": "dev-trunk",
+          "source": {
+            "url": "https://github.com/woocommerce/woocommerce/",
+            "type": "git",
+            "reference": "trunk"
+          },
+          "installation-source": "dist"
         }
+      }
     },
     "require": {
         "php": ">=8.0"
@@ -76,6 +89,7 @@
         "rector/rector": "*",
         "squizlabs/php_codesniffer": "*",
         "szepeviktor/phpstan-wordpress": "*",
+        "woocommerce/woocommerce": "dev-trunk",
         "wordpress/wordpress": "*",
         "wp-cli/dist-archive-command": "*",
         "wp-cli/wp-cli-bundle": "*",

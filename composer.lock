@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4157f27731a5a13c150cf8f6fd06248a",
+    "content-hash": "23fd72c7ed10e363d5d3ecb5dbb07b07",
     "packages": [],
     "packages-dev": [
         {
@@ -9316,6 +9316,16 @@
             "time": "2025-10-29T15:56:20+00:00"
         },
         {
+            "name": "woocommerce/woocommerce",
+            "version": "dev-trunk",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/woocommerce/woocommerce/",
+                "reference": "trunk"
+            },
+            "type": "library"
+        },
+        {
             "name": "wordpress/wordpress",
             "version": "6.9.0",
             "source": {
@@ -11809,7 +11819,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": {
+        "woocommerce/woocommerce": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
