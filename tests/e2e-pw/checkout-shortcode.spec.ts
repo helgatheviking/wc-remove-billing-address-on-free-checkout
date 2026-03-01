@@ -246,9 +246,9 @@ test.describe( 'Shortcode Checkout – Billing/Shipping Field Visibility', () =>
 
 		await updateShippingDestinationSetting( requestUtils, SHIPPING_DESTINATION_OPTIONS.BILLING )
 
-		// await useShortcodeCheckout( requestUtils );
-		await useBlocksCheckout(requestUtils);
-		isUsingBlocksCheckout = true;
+		await useShortcodeCheckout( requestUtils );
+		// await useBlocksCheckout(requestUtils);
+		// isUsingBlocksCheckout = true;
 
 		// Look up product IDs via WooCommerce Store API (public, no auth needed).
 		for ( const [ key, name ] of Object.entries( PRODUCTS ) ) {
