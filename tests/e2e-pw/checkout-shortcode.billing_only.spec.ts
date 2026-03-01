@@ -21,7 +21,6 @@ const BILLING_IDENTITY_SELECTORS = [
 	'#billing_email',
 ] as const;
 
-
 const ADDRESS_SELECTORS_AND_VALUES = {
 	'#billing_first_name': 'Brian',
 	'#billing_last_name': 'Henry',
@@ -133,15 +132,6 @@ async function expectBillingIdentityShown( page: Page ) {
 	for ( const selector of BILLING_IDENTITY_SELECTORS ) {
 		await expect( page.locator( selector ) ).toBeVisible();
 	}
-}
-
-/**
- * Assert shipping fields are visible.
- */
-async function expectShippingShown( page: Page ) {
-	await expect(
-		page.locator( '#ship-to-different-address-checkbox, #shipping_first_name' ).first()
-	).toBeVisible();
 }
 
 /**
@@ -298,10 +288,6 @@ test.describe( 'Shortcode Checkout – Billing/Shipping Field Visibility', () =>
 		await expectBillingIdentityShown( page );
 		await expectBillingAddressShown( page );
 
-
 		await placeOrder( page );
 	} );
-
-
-
 } );
