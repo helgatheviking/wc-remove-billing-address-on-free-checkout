@@ -24,31 +24,46 @@
  */
 // @ts-ignore
 import { test, expect, Page, RequestUtils } from '@wordpress/e2e-test-utils-playwright';
-import { useShortcodeCheckout } from "./helpers/checkout";
+import {useBlocksCheckout, useShortcodeCheckout} from "./helpers/checkout";
 import {updateSetting} from "./helpers/general/rest/settings";
 
-const SHORTCODE_CHECKOUT_CONTENT =
-	'<!-- wp:shortcode -->[woocommerce_checkout]<!-- /wp:shortcode -->';
+var isUsingBlocksCheckout = false;
 
 /** Billing address fields that the plugin removes (the "address" fields). */
-const BILLING_ADDRESS_SELECTORS = [
+const SHORTCODE_BILLING_ADDRESS_SELECTORS = [
 	'#billing_address_1',
 	'#billing_city',
 	'#billing_postcode',
 	'#billing_phone',
 ] as const;
+const BLOCKS_BILLING_ADDRESS_SELECTORS = [
+	'#billing-address_1',
+	'#billing-city',
+	'#billing-postcode',
+	'#billing-phone',
+] as const;
 
 /** Billing identity fields that should always remain. */
-const BILLING_IDENTITY_SELECTORS = [
+const SHORTCODE_BILLING_IDENTITY_SELECTORS = [
 	'#billing_first_name',
 	'#billing_last_name',
 	'#billing_email',
 ] as const;
+const BLOCKS_BILLING_IDENTITY_SELECTORS = [
+	'#billing-first_name',
+	'#billing-last_name',
+	'#email',
+] as const;
 
-const SHIPPING_ADDRESS_SELECTORS = [
+const SHORTCODE_SHIPPING_ADDRESS_SELECTORS = [
 	'#shipping_address_1',
 	'#shipping_city',
 	'#shipping_postcode',
+] as const;
+const BLOCKS_SHIPPING_ADDRESS_SELECTORS = [
+	'#shipping-address_1',
+	'#shipping-city',
+	'#shipping-postcode',
 ] as const;
 
 
@@ -142,6 +157,7 @@ async function selectGateway( page: Page, gatewayId: string ) {
  * Assert that billing address fields are REMOVED (hidden).
  */
 async function expectBillingAddressRemoved( page: Page ) {
+	const BILLING_ADDRESS_SELECTORS = isUsingBlocksCheckout ? BLOCKS_BILLING_ADDRESS_SELECTORS : SHORTCODE_BILLING_ADDRESS_SELECTORS;
 	for ( const selector of BILLING_ADDRESS_SELECTORS ) {
 		await expect( page.locator( selector ) ).not.toBeVisible();
 	}
@@ -151,6 +167,7 @@ async function expectBillingAddressRemoved( page: Page ) {
  * Assert that billing address fields are SHOWN (visible).
  */
 async function expectBillingAddressShown( page: Page ) {
+	const BILLING_ADDRESS_SELECTORS = isUsingBlocksCheckout ? BLOCKS_BILLING_ADDRESS_SELECTORS : SHORTCODE_BILLING_ADDRESS_SELECTORS;
 	for ( const selector of BILLING_ADDRESS_SELECTORS ) {
 		await expect( page.locator( selector ) ).toBeVisible();
 	}
@@ -160,6 +177,7 @@ async function expectBillingAddressShown( page: Page ) {
  * Assert that billing identity fields (name, email) are always visible.
  */
 async function expectBillingIdentityShown( page: Page ) {
+	const BILLING_IDENTITY_SELECTORS = isUsingBlocksCheckout ? BLOCKS_BILLING_IDENTITY_SELECTORS : SHORTCODE_BILLING_IDENTITY_SELECTORS;
 	for ( const selector of BILLING_IDENTITY_SELECTORS ) {
 		await expect( page.locator( selector ) ).toBeVisible();
 	}
@@ -169,6 +187,8 @@ async function expectBillingIdentityShown( page: Page ) {
  * Assert shipping fields are visible.
  */
 async function expectShippingShown( page: Page ) {
+	const SHIPPING_ADDRESS_SELECTORS = isUsingBlocksCheckout ? BLOCKS_SHIPPING_ADDRESS_SELECTORS : SHORTCODE_SHIPPING_ADDRESS_SELECTORS;
+
 	for ( const selector of SHIPPING_ADDRESS_SELECTORS ) {
 		await expect( page.locator( selector ) ).toBeVisible();
 	}
@@ -224,9 +244,11 @@ test.describe( 'Shortcode Checkout – Billing/Shipping Field Visibility', () =>
 
 	test.beforeAll( async ( { requestUtils } ) => {
 
-		await updateShippingDestinationSetting( requestUtils, SHIPPING_DESTINATION_OPTIONS.SHIPPING )
+		await updateShippingDestinationSetting( requestUtils, SHIPPING_DESTINATION_OPTIONS.BILLING )
 
-		await useShortcodeCheckout( requestUtils );
+		// await useShortcodeCheckout( requestUtils );
+		await useBlocksCheckout(requestUtils);
+		isUsingBlocksCheckout = true;
 
 		// Look up product IDs via WooCommerce Store API (public, no auth needed).
 		for ( const [ key, name ] of Object.entries( PRODUCTS ) ) {
