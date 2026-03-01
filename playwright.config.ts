@@ -27,7 +27,7 @@ const STORAGE_STATE_PATH =
  */
 export default defineConfig( {
   testDir: './tests/e2e-pw',
-  testIgnore: [ '**/helpers-tests/**', '**/checkout-blocks*' ],
+  testIgnore: [ '**/helpers-tests/**' ],
   globalSetup: require.resolve( './tests/e2e-pw/global-setup.ts' ),
   /* Run tests in files in parallel */
   fullyParallel: true,
