@@ -502,7 +502,10 @@ class Checkout {
 			$woocommerce_shipping_fields = $this->replace_ship_to_different_address_checked( $woocommerce_shipping_fields );
 		}
 
-		// TODO: Remove `woocommerce-additional-fields`.
+		/**
+		 * Remove `woocommerce-additional-fields`, otherwise it duplicates.
+		 */
+		$woocommerce_shipping_fields = preg_replace( '/<div class="woocommerce-additional-fields">[\s\S]*/m', '', $woocommerce_shipping_fields );
 
 		$fragments['.woocommerce-shipping-fields'] = $woocommerce_shipping_fields;
 
