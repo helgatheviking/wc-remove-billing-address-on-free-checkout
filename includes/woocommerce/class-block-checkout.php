@@ -25,21 +25,30 @@ class Block_Checkout implements IntegrationInterface {
 	}
 
 	/**
-	 * Initialize the integration – register the script and add filters.
+	 * Initialize the integration – register the frontend script.
+	 *
+	 * Note: locale filters are registered in the main plugin class
+	 * (WC_Remove_Billing_Address_On_Free_Checkout::define_block_checkout_hooks)
+	 * so they also fire during Store API requests, where BlockTypesController
+	 * is skipped and this initialize() method is never called.
 	 *
 	 * @see IntegrationInterface::initialize()
 	 * @return void
 	 */
 	public function initialize() {
 		$this->register_script();
-		add_filter( 'woocommerce_get_country_locale', array( $this, 'hide_address_fields_for_free_virtual_cart' ) );
 	}
 
 	/**
-	 * Hide billing address fields at page-load time when the cart is free and
-	 * requires no shipping (i.e. all items are virtual/downloadable).
+	 * Hide billing address fields at page-load time for free + no-shipping carts.
 	 *
-	 * @param array $locale Country locale data from WooCommerce.
+	 * Filters the per-country locale array used by WooCommerce to determine which
+	 * checkout fields are required/hidden. Because WC_Countries::get_country_locale()
+	 * caches this data, both `woocommerce_get_country_locale` (for explicit per-country
+	 * entries) and `woocommerce_get_country_locale_default` (for the default/fallback)
+	 * must be filtered.
+	 *
+	 * @param array $locale Country-keyed locale array (country_code => field definitions).
 	 * @return array Modified locale with address fields hidden.
 	 */
 	public function hide_address_fields_for_free_virtual_cart( array $locale ): array {
@@ -63,6 +72,33 @@ class Block_Checkout implements IntegrationInterface {
 	}
 
 	/**
+	 * Hide billing address fields in the default locale for free + no-shipping carts.
+	 *
+	 * The `woocommerce_get_country_locale_default` filter receives a flat field-keyed
+	 * array rather than the country-keyed array of `woocommerce_get_country_locale`.
+	 * Setting `hidden: true` here ensures that even for countries whose locale entry
+	 * doesn't appear in the explicit per-country array, the default-based merge in
+	 * OrderController::validate_address_fields() still skips validation for those fields.
+	 *
+	 * @param array $locale Flat field-keyed locale array (field_name => field properties).
+	 * @return array Modified locale with address fields marked not-required and hidden.
+	 */
+	public function hide_address_fields_default_locale_for_free_virtual_cart( array $locale ): array {
+		$cart = WC()->cart;
+		if ( ! $cart || $cart->needs_shipping() ) {
+			return $locale;
+		}
+		if ( 0.0 !== floatval( $cart->get_total( 'edit' ) ) ) {
+			return $locale;
+		}
+		$fields_to_hide = [ 'address_1', 'address_2', 'city', 'state', 'postcode', 'phone' ];
+		foreach ( $fields_to_hide as $field ) {
+			$locale[ $field ] = array_merge( $locale[ $field ] ?? [], [ 'required' => false, 'hidden' => true ] );
+		}
+		return $locale;
+	}
+
+	/**
 	 * Register the checkout script with WordPress, to later be enqueued by WooCommerce.
 	 */
 	protected function register_script(): void {
@@ -76,7 +112,7 @@ class Block_Checkout implements IntegrationInterface {
 
 		wp_register_script(
 			'wc-remove-billing-address-on-free-checkout-blocks',
-			plugins_url( 'build/wc-remove-billing-address-on-free-checkout-blocks.js', __DIR__ . '/../../' ),
+			plugins_url( 'build/wc-remove-billing-address-on-free-checkout-blocks.js', __DIR__ . '/../../../' ),
 			$script_asset['dependencies'],
 			$script_asset['version'],
 			true

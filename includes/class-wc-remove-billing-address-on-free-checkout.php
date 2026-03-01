@@ -44,15 +44,28 @@ class WC_Remove_Billing_Address_On_Free_Checkout {
 	}
 
 	/**
-	 * Register the Block_Checkout integration with WooCommerce Blocks.
+	 * Register the Block_Checkout integration with WooCommerce Blocks and add
+	 * locale filters that must run for all request types (including Store API).
+	 *
+	 * BlockTypesController is not initialized for Store API requests, so we cannot
+	 * rely on Block_Checkout::initialize() being called. Register locale filters
+	 * here to ensure server-side validation respects the hidden/not-required state.
 	 */
 	protected function define_block_checkout_hooks(): void {
+		$block_checkout = new Block_Checkout();
+
 		add_action(
 			'woocommerce_blocks_checkout_block_registration',
-			function ( $integration_registry ) {
-				$integration_registry->register( new Block_Checkout() );
+			function ( $integration_registry ) use ( $block_checkout ) {
+				$integration_registry->register( $block_checkout );
 			}
 		);
+
+		// Hide billing address fields for free + no-shipping carts.
+		// Registered here (not in Block_Checkout::initialize) so they fire for
+		// Store API requests, where BlockTypesController is skipped.
+		add_filter( 'woocommerce_get_country_locale', array( $block_checkout, 'hide_address_fields_for_free_virtual_cart' ) );
+		add_filter( 'woocommerce_get_country_locale_default', array( $block_checkout, 'hide_address_fields_default_locale_for_free_virtual_cart' ) );
 	}
 
 	/**
