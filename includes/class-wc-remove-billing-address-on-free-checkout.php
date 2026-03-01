@@ -7,6 +7,7 @@
 
 namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout;
 
+use KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce\Block_Checkout;
 use KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce\Checkout;
 use KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce\WC_Payment_Gateway;
 
@@ -24,6 +25,7 @@ class WC_Remove_Billing_Address_On_Free_Checkout {
 	public function register_hooks(): void {
 		$this->define_payment_gateway_hooks();
 		$this->define_checkout_hooks();
+		$this->define_block_checkout_hooks();
 	}
 
 	/**
@@ -39,6 +41,18 @@ class WC_Remove_Billing_Address_On_Free_Checkout {
 		$wc_payment_gateway = new WC_Payment_Gateway();
 
 		add_action( 'woocommerce_after_register_post_type', array( $wc_payment_gateway, 'register_gateway_settings' ) );
+	}
+
+	/**
+	 * Register the Block_Checkout integration with WooCommerce Blocks.
+	 */
+	protected function define_block_checkout_hooks(): void {
+		add_action(
+			'woocommerce_blocks_checkout_block_registration',
+			function ( $integration_registry ) {
+				$integration_registry->register( new Block_Checkout() );
+			}
+		);
 	}
 
 	/**

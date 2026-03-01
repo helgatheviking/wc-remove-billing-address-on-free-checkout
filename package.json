@@ -6,6 +6,8 @@
     "test": "tests"
   },
   "scripts": {
+    "build": "wp-scripts build src/blocks.js --output-path=build --output-filename=wc-remove-billing-address-on-free-checkout-blocks.js",
+    "start": "wp-scripts start src/blocks.js --output-path=build --output-filename=wc-remove-billing-address-on-free-checkout-blocks.js",
     "wp-env": "wp-env start",
     "wp-env:stop": "wp-env stop",
     "wp-env:clean": "wp-env clean",
@@ -23,6 +25,7 @@
     "@playwright/test": "*",
     "@wordpress/e2e-test-utils-playwright": "^1",
     "@wordpress/env": "^10.39.0",
+    "@wordpress/scripts": "^30",
     "dotenv": "^17.2"
   }
 }
