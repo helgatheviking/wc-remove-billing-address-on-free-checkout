@@ -9,6 +9,8 @@ namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout;
 
 use KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce\Block_Checkout;
 use KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce\Checkout;
+use KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce\Countries;
+use KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce\Features_Support;
 use KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce\WC_Payment_Gateway;
 
 /**
@@ -20,12 +22,13 @@ class WC_Remove_Billing_Address_On_Free_Checkout {
 	 * Public method to add all actions and filters.
 	 *
 	 * @see wc-remove-billing-address-on-free-checkout.php
-	 * @hooked woocommerce_init
+	 * @hooked woocommerce_loaded
 	 */
 	public function register_hooks(): void {
 		$this->define_payment_gateway_hooks();
 		$this->define_checkout_hooks();
 		$this->define_block_checkout_hooks();
+		$this->define_woocommerce_features_hooks();
 	}
 
 	/**
@@ -86,5 +89,16 @@ class WC_Remove_Billing_Address_On_Free_Checkout {
 
 		add_filter( 'do_shortcode_tag', array( $checkout, 'set_shortcode_fragment_title' ), 10, 4 );
 		add_filter( 'do_shortcode_tag', array( $checkout, 'set_shortcode_ship_to_different_address' ), 10, 4 );
+	}
+
+	/**
+	 * Add hooks to confirm with WooCommerce that we support the modern (in 2026) features.
+	 */
+	protected function define_woocommerce_features_hooks(): void {
+
+		$features_support = new Features_Support();
+
+		add_action( 'before_woocommerce_init', array( $features_support, 'declare_cart_checkout_blocks_compatibility' ) );
+		add_action( 'before_woocommerce_init', array( $features_support, 'declare_hpos_compatibility' ) );
 	}
 }
