@@ -7,12 +7,24 @@
 namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce;
 
 use Automattic\WooCommerce\Blocks\Integrations\IntegrationInterface;
+use Automattic\WooCommerce\Blocks\Integrations\IntegrationRegistry;
 use WC_Payment_Gateways;
 
 /**
  * @see \Automattic\WooCommerce\Blocks\BlockTypes\AbstractBlock::register_block_type_assets()
  */
 class Block_Checkout implements IntegrationInterface {
+
+	/**
+	 * Let WooCommerce know about the plugin in its `checkout_block` registry.
+	 *
+	 * @hooked woocommerce_blocks_checkout_block_registration
+	 *
+	 * @param IntegrationRegistry $integration_registry
+	 */
+	public function register_integration( IntegrationRegistry $integration_registry ): void {
+		$integration_registry->register( $this );
+	}
 
 	/**
 	 * Return a unique name for the integration.

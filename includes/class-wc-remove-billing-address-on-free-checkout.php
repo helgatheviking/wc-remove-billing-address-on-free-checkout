@@ -57,12 +57,7 @@ class WC_Remove_Billing_Address_On_Free_Checkout {
 	protected function define_block_checkout_hooks(): void {
 		$block_checkout = new Block_Checkout();
 
-		add_action(
-			'woocommerce_blocks_checkout_block_registration',
-			function ( $integration_registry ) use ( $block_checkout ) {
-				$integration_registry->register( $block_checkout );
-			}
-		);
+		add_action( 'woocommerce_blocks_checkout_block_registration', array( $block_checkout, 'register_integration' ) );
 
 		// Hide billing address fields for free + no-shipping carts.
 		// Registered here (not in Block_Checkout::initialize) so they fire for
