@@ -6,8 +6,6 @@ parameters:
         - tests/wpunit/
 
     scanDirectories:
-#        - vendor/10up/wp_mock/php/
-#        - vendor/johnpbloch/wordpress/
 #        - vendor/php-stubs/woocommerce-stubs/
 #        - vendor/szepeviktor/phpstan-wordpress/
         - wp-content/plugins/woocommerce/
@@ -17,11 +15,10 @@ parameters:
 
     excludePaths:
 #        - tests/_support/_generated
+        - build
         - tests/_data
         - tests/_output
         - vendor
         - node_modules
-        - wordpress
-        - wp-content
 
     reportUnmatchedIgnoredErrors: false

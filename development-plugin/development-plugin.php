@@ -37,33 +37,35 @@ require_once __DIR__ . '/class-wp-env.php';
 ( new WP_Env() )->register_hooks();
 ( new WooCommerce_Settings() )->register_hooks();
 
-add_action( 'woocommerce_loaded', function() {
+add_action(
+	'woocommerce_loaded',
+	function () {
 
-	$test_gateways = array();
-	$test_gateways['test_gateway_one'] = new Test_Gateway_One();
-	$test_gateways['test_gateway_two'] = new Test_Gateway_Two();
+		$test_gateways                     = array();
+		$test_gateways['test_gateway_one'] = new Test_Gateway_One();
+		$test_gateways['test_gateway_two'] = new Test_Gateway_Two();
 
-	/**
-	 * Register the test gateways with the classic (shortcode) checkout.
-	 */
-	add_filter(
-		'woocommerce_payment_gateways',
-		function ( array $gateways ) use ($test_gateways ){
-			$gateways[] = $test_gateways['test_gateway_one'];
-			$gateways[] = $test_gateways['test_gateway_two'];
-			return $gateways;
-		}
-	);
+		/**
+		 * Register the test gateways with the classic (shortcode) checkout.
+		 */
+		add_filter(
+			'woocommerce_payment_gateways',
+			function ( array $gateways ) use ( $test_gateways ) {
+				$gateways[] = $test_gateways['test_gateway_one'];
+				$gateways[] = $test_gateways['test_gateway_two'];
+				return $gateways;
+			}
+		);
 
-	/**
-	 * Register the test gateways with the WooCommerce Blocks checkout.
-	 */
-	add_action(
-		'woocommerce_blocks_payment_method_type_registration',
-		function ( $registry ) use ( $test_gateways ) {
-			$registry->register( new Test_Gateway_One_Blocks($test_gateways['test_gateway_one']) );
-			$registry->register( new Test_Gateway_Two_Blocks($test_gateways['test_gateway_two']) );
-		}
-	);
-
-});
+		/**
+		 * Register the test gateways with the WooCommerce Blocks checkout.
+		 */
+		add_action(
+			'woocommerce_blocks_payment_method_type_registration',
+			function ( $registry ) use ( $test_gateways ) {
+				$registry->register( new Test_Gateway_One_Blocks( $test_gateways['test_gateway_one'] ) );
+				$registry->register( new Test_Gateway_Two_Blocks( $test_gateways['test_gateway_two'] ) );
+			}
+		);
+	}
+);
