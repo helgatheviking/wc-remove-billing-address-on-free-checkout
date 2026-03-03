@@ -86,3 +86,4 @@ tests/_support/_generated/
 /tests/_data/dump.sql
 /artifacts
 /build
+/development-plugin/build

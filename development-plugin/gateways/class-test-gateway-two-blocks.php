@@ -70,11 +70,12 @@ class Test_Gateway_Two_Blocks extends AbstractPaymentMethodType {
 	 * @inheritDoc
 	 */
 	public function get_payment_method_script_handles() {
+		$asset_file = require dirname( __DIR__ ) . '/build/test-gateway-two.asset.php';
 		wp_register_script(
 			'test-gateway-two-blocks',
-			plugins_url( 'js/test-gateway-two.js', __FILE__ ),
-			array( 'wc-blocks-registry', 'wp-element' ),
-			'1.0.0',
+			plugins_url( 'build/test-gateway-two.js', dirname( __DIR__ ) . '/development-plugin.php' ),
+			$asset_file['dependencies'],
+			$asset_file['version'],
 			true
 		);
 

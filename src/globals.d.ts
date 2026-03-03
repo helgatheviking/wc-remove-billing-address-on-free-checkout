@@ -14,3 +14,23 @@ declare module '@woocommerce/settings' {
 		fallback?: T
 	): T;
 }
+
+declare module '@wordpress/element' {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	export function createElement( type: any, props?: any, ...children: any[] ): unknown;
+}
+
+// declare module '@woocommerce/blocks-registry' {
+// 	export function registerPaymentMethod( options: {
+// 		name: string;
+// 		label: unknown;
+// 		content: unknown;
+// 		editContent: unknown;
+// 		edit: unknown;
+// 		canMakePayment: () => boolean;
+// 		ariaLabel: string;
+// 		supports?: {
+// 			features?: string[];
+// 		};
+// 	} ): void;
+// }
