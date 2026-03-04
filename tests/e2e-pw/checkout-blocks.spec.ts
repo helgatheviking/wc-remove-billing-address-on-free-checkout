@@ -1,242 +1,624 @@
 /**
- * Test the plugin's behavior on the WooCommerce blocks checkout.
- * The plugin only hooks 'woocommerce_billing_fields' which is NOT used by blocks checkout.
- * These tests demonstrate that the plugin does NOT work with blocks checkout.
+ * Test billing/shipping field visibility on the classic [woocommerce_checkout] shortcode.
+ *
+ * ## Variables
+ *
+ * 1. Product type (4): Free Virtual, Paid Virtual, Free Shipped, Paid Shipped
+ * 2. Gateway (2): test_gateway_one (requires billing), test_gateway_two (require_billing_fields=false)
+ *
+ * ## Expected Outcomes (8 combinations)
+ *
+ * | Product        | Gateway (billing req?) | Billing Address | Shipping | Why                                        |
+ * |----------------|------------------------|-----------------|----------|--------------------------------------------|
+ * | Free Virtual   | gw1 (yes)              | REMOVED         | Hidden   | Free + no shipping → default removal       |
+ * | Free Virtual   | gw2 (no)               | REMOVED         | Hidden   | Free + no shipping; also gw doesn't need   |
+ * | Paid Virtual   | gw1 (yes)              | SHOWN           | Hidden   | Not free, gateway requires billing          |
+ * | Paid Virtual   | gw2 (no)               | REMOVED         | Hidden   | require_billing_fields=false                |
+ * | Free Shipped   | gw1 (yes)              | SHOWN           | Shown    | Free but needs shipping → no free removal   |
+ * | Free Shipped   | gw2 (no)               | SHOWN           | Shown    | $0 cart hides gateways → can't select gw2   |
+ * | Paid Shipped   | gw1 (yes)              | SHOWN           | Shown    | Not free, needs shipping, gw requires       |
+ * | Paid Shipped   | gw2 (no)               | REMOVED         | Shown    | require_billing_fields=false                |
+ *
+ * Products are created in {@see initialize-internal.sh}.
+ * Gateways are registered in {@see development-plugin.php}.
  */
-import { test, expect, RequestUtils } from '@wordpress/e2e-test-utils-playwright';
-import { loginAsAdmin } from './helpers/general/ui/login';
+import { test, expect, Page, RequestUtils } from '@wordpress/e2e-test-utils-playwright';
+import {useBlocksCheckout } from "./helpers/checkout";
+import {updateSetting} from "./helpers/general/rest/settings";
 
-test.describe( 'WC Remove Billing Address - Blocks Checkout (Plugin has NO effect)', () => {
-	let freeProductId: string;
-	let paidProductId: string;
-	let checkoutPageId: string;
+var isUsingBlocksCheckout = false;
+
+/** Billing address fields that the plugin removes (the "address" fields). */
+const SHORTCODE_BILLING_ADDRESS_SELECTORS = [
+	'#billing_address_1',
+	'#billing_city',
+	'#billing_state',
+	'#billing_postcode',
+	'#billing_phone',
+] as const;
+const BLOCKS_BILLING_ADDRESS_SELECTORS = [
+	'#billing-address_1',
+	'#billing-city',
+	'#billing-state',
+	'#billing-postcode',
+	'#billing-phone',
+] as const;
+
+/** Billing identity fields that should always remain. */
+const SHORTCODE_BILLING_IDENTITY_SELECTORS = [
+	'#billing_first_name',
+	'#billing_last_name',
+	'#billing_email',
+] as const;
+const BLOCKS_BILLING_IDENTITY_SELECTORS = [
+	'#billing-first_name',
+	'#billing-last_name',
+	'#email',
+] as const;
+
+/** Shipping identity fields that should always remain. */
+const SHORTCODE_SHIPPING_IDENTITY_SELECTORS = [
+	'#shipping_first_name',
+	'#shipping_last_name',
+	// '#billing_email',
+] as const;
+
+const BLOCKS_SHIPPING_IDENTITY_SELECTORS = [
+	'#shipping-first_name',
+	'#shipping-last_name',
+	'#email',
+] as const;
+
+const SHORTCODE_SHIPPING_ADDRESS_SELECTORS = [
+	'#shipping_address_1',
+	'#shipping_city',
+	'#shipping_postcode',
+] as const;
+const BLOCKS_SHIPPING_ADDRESS_SELECTORS = [
+	'#shipping-address_1',
+	'#shipping-city',
+	'#shipping-postcode',
+] as const;
+
+
+const ADDRESS_SELECTORS_AND_VALUES = {
+	'#billing_first_name': 'Brian',
+	'#billing_last_name': 'Henry',
+	'#billing_email': 'brianhenryie@example.com',
+	'#billing_address_1': '123 Fake Street',
+	'#billing_city': 'Beverley Hills',
+	// '#billing_state': 'California', // Omit because it's not a smile text field to fill.
+	'#billing_postcode': '90210',
+	'#billing_phone': '1234567890',
+	'#shipping_first_name': 'Brian',
+	'#shipping_last_name': 'Henry',
+	'#shipping_email': 'brianhenryie@example.com',
+	'#shipping_address_1': '123 Fake Street',
+	'#shipping_city': 'Beverley Hills',
+	'#shipping_postcode': '90210',
+	'#shipping_phone': '1234567890',
+} as const;
+
+const BLOCK_ADDRESS_SELECTORS_AND_VALUES = {
+	'#billing-first_name': 'Brian',
+	'#billing-last_name': 'Henry',
+	'#email': 'brianhenryie@example.com',
+	'#billing-address_1': '123 Fake Street',
+	'#billing-city': 'Beverley Hills',
+	'#billing-postcode': '90210',
+	'#billing-phone': '1234567890',
+	'#shipping-first_name': 'Brian',
+	'#shipping-last_name': 'Henry',
+	'#shipping-email': 'brianhenryie@example.com',
+	'#shipping-address_1': '123 Fake Street',
+	'#shipping-city': 'Beverley Hills',
+	'#shipping-postcode': '90210',
+	'#shipping-phone': '1234567890',
+} as const;
+
+/** Product slugs from initialize-internal.sh */
+const PRODUCTS = {
+	freeVirtual: 'Free Digital Product',
+	paidVirtual: 'Digital Product',
+	freeShipped: 'Free Shipped Product',
+	paidShipped: 'Shipped Product',
+} as const;
+
+/** Maps product name → ID, populated in beforeAll. */
+const productIds: Record< string, number > = {};
+
+/**
+ * Empty the cart and add a single product, then navigate to checkout.
+ *
+ * Clears cookies to reset the WooCommerce session (empty cart), then
+ * adds the product via the `?add-to-cart=` URL and navigates to checkout.
+ * The test runs as a guest (not logged in) to avoid pre-filled address data.
+ */
+async function addToCartAndCheckout( page: Page, productId: number ) {
+	// Clear all cookies to reset WC session / empty cart.
+	await page.context().clearCookies();
+
+	// Add product to cart (as guest).
+	await page.goto( `/?add-to-cart=${ productId }` );
+	await page.waitForLoadState( 'networkidle' );
+
+	// Navigate to checkout.
+	await page.goto( '/checkout/' );
+	await page.waitForLoadState( 'networkidle' );
+}
+
+/**
+ * Select a payment gateway by clicking its radio button and wait for the
+ * checkout to update (billing fields may re-render via AJAX fragments).
+ *
+ * When cart total is $0, WooCommerce hides payment methods entirely —
+ * in that case this is a no-op.
+ */
+async function selectGateway( page: Page, gatewayId: string ) {
+
+	const radio = isUsingBlocksCheckout
+		? page.locator( `#radio-control-wc-payment-method-options-${ gatewayId }` )
+		: page.locator( `input[name="payment_method"][value="${ gatewayId }"]` );
+
+	// When cart is free, WooCommerce may hide payment methods entirely.
+	const isVisible = await radio.isVisible().catch( () => false );
+	if ( ! isVisible ) {
+		return;
+	}
+
+	// If already selected, nothing to do.
+	if ( await radio.isChecked() ) {
+		return;
+	}
+
+	if(isUsingBlocksCheckout) {
+		await radio.check();
+	}else{
+		// Set up a listener for the AJAX update_order_review response BEFORE clicking.
+		const responsePromise = page.waitForResponse(
+			(response) =>
+				response.url().includes('wc-ajax=update_order_review') &&
+				response.status() === 200,
+			{timeout: 10000}
+		);
+
+		await radio.check();
+
+		// Wait for the AJAX checkout update to complete (billing fields re-render).
+		await responsePromise;
+	}
+
+	// Brief wait for DOM to stabilize after fragment replacement.
+	await page.waitForTimeout( 500 );
+
+	// TODO: Add a failing assert here.
+}
+
+// Use same address for billing
+async function checkUseSameAddressForBilling( page: Page, setChecked: boolean ) {
+	const checkbox = await page.locator( `#checkbox-control-0` );
+	// await page.locator('.wc-block-checkout__use-address-for-billing').first()
+
+	// If already checked(setChecked), nothing to do.
+	const isAlreadyChecked = await checkbox.isChecked();
+	if ( (setChecked && isAlreadyChecked) || (!setChecked && !isAlreadyChecked )) {
+		return;
+	}
+
+	if(setChecked){
+		await checkbox.check();
+	}else {
+		await checkbox.uncheck()
+	}
+
+	// Brief wait for DOM to stabilize after fragment replacement.
+	await page.waitForTimeout( 500 );
+}
+
+/**
+ * Assert that billing address fields are REMOVED (hidden).
+ */
+async function expectBillingAddressRemoved( page: Page ) {
+	const BILLING_ADDRESS_SELECTORS = isUsingBlocksCheckout ? BLOCKS_BILLING_ADDRESS_SELECTORS : SHORTCODE_BILLING_ADDRESS_SELECTORS;
+	for ( const selector of BILLING_ADDRESS_SELECTORS ) {
+		await expect( page.locator( selector ) ).not.toBeVisible();
+	}
+}
+
+/**
+ * Assert that billing address fields are SHOWN (visible).
+ */
+async function expectBillingAddressShown( page: Page ) {
+	const BILLING_ADDRESS_SELECTORS = isUsingBlocksCheckout ? BLOCKS_BILLING_ADDRESS_SELECTORS : SHORTCODE_BILLING_ADDRESS_SELECTORS;
+	for ( const selector of BILLING_ADDRESS_SELECTORS ) {
+		await expect( page.locator( selector ) ).toBeVisible();
+	}
+}
+
+/**
+ * Assert that billing identity fields (name, email) are always visible.
+ */
+async function expectShippingIdentityShown( page: Page ) {
+	const SHIPPING_IDENTITY_SELECTORS = isUsingBlocksCheckout ? BLOCKS_SHIPPING_IDENTITY_SELECTORS : SHORTCODE_SHIPPING_IDENTITY_SELECTORS;
+	for ( const selector of SHIPPING_IDENTITY_SELECTORS ) {
+		await expect( page.locator( selector ) ).toBeVisible();
+	}
+}
+
+/**
+ * Assert that billing identity fields (name, email) are always visible.
+ */
+async function expectBillingIdentityShown( page: Page ) {
+	const BILLING_IDENTITY_SELECTORS = isUsingBlocksCheckout ? BLOCKS_BILLING_IDENTITY_SELECTORS : SHORTCODE_BILLING_IDENTITY_SELECTORS;
+	for ( const selector of BILLING_IDENTITY_SELECTORS ) {
+		await expect( page.locator( selector ) ).toBeVisible();
+	}
+}
+
+/**
+ * Assert shipping fields are visible.
+ */
+async function expectShippingShown( page: Page ) {
+	const SHIPPING_ADDRESS_SELECTORS = isUsingBlocksCheckout ? BLOCKS_SHIPPING_ADDRESS_SELECTORS : SHORTCODE_SHIPPING_ADDRESS_SELECTORS;
+
+	for ( const selector of SHIPPING_ADDRESS_SELECTORS ) {
+		await expect( page.locator( selector ) ).toBeVisible();
+	}
+}
+
+/**
+ * Assert shipping fields are hidden.
+ *
+ * In blocks checkout, virtual products don't render shipping fields at all.
+ * Use hyphenated IDs (#shipping-*) for blocks, underscored (#shipping_*) for shortcode.
+ */
+async function expectShippingHidden( page: Page ) {
+	if ( isUsingBlocksCheckout ) {
+		await expect( page.locator( '#shipping-first_name' ) ).not.toBeVisible();
+		await expect( page.locator( '#shipping-address_1' ) ).not.toBeVisible();
+		await expect( page.locator( '#shipping-city' ) ).not.toBeVisible();
+		await expect( page.locator( '#shipping-postcode' ) ).not.toBeVisible();
+	} else {
+		await expect( page.locator( '#shipping_first_name' ) ).not.toBeVisible();
+		await expect( page.locator( '#shipping_last_name' ) ).not.toBeVisible();
+		await expect( page.locator( '#shipping_address_1' ) ).not.toBeVisible();
+		await expect( page.locator( '#shipping_city' ) ).not.toBeVisible();
+		await expect( page.locator( '#shipping_postcode' ) ).not.toBeVisible();
+	}
+}
+
+/**
+ * Click place order and confirm success on order confirmation page.
+ */
+async function placeOrder( page: Page ) {
+	const ADDRESS_SELECTORS = Object.keys(BLOCK_ADDRESS_SELECTORS_AND_VALUES)
+
+	for(let i = 0; i < ADDRESS_SELECTORS.length; i++){
+		const selector = ADDRESS_SELECTORS[i];
+		const value = BLOCK_ADDRESS_SELECTORS_AND_VALUES[selector];
+		if ( await page.isVisible( selector ) ) {
+			await page.fill( selector, value );
+		}
+	}
+
+	// await page.waitForLoadState( 'networkidle' );
+	// await page.waitForTimeout( 2500 );
+
+	if(isUsingBlocksCheckout){
+		const placeOrderButton = await page.locator( '.wc-block-checkout__actions_row' ).first().getByText( 'Place Order' );
+		await placeOrderButton.click();
+	} else {
+		await page.click( '#place_order' );
+	}
+
+	// Wait for order-received page.
+	await page.waitForURL( /order-received/, { timeout: 30000 } );
+
+	// Verify order received.
+	await expect(
+		page.locator( '.woocommerce-thankyou-order-received, .woocommerce-order-received' ).first()
+	).toBeVisible();
+}
+
+const SHIPPING_DESTINATION_OPTIONS = {
+	SHIPPING: 'shipping', // "Default to customer shipping address". – shows the shipping address form
+	BILLING: 'billing', // "Default to customer billing address" – hides the shipping address form until "Ship to another address" is checked
+	BILLING_ONLY: 'billing_only', // "Force shipping to the customer billing addres" – only displays the billing form, ships to that address.
+} as const;
+
+async function updateShippingDestinationSetting(requestUtils: RequestUtils,  value: string ): Promise<void> {
+	updateSetting(requestUtils,'woocommerce_ship_to_destination', value);
+}
+
+test.describe( 'Blocks Checkout – Billing/Shipping Field Visibility', () => {
 
 	test.beforeAll( async ( { requestUtils } ) => {
 
-		// Create test products using REST API
-		const freeProduct = await requestUtils.rest( {
+		// TODO: run all tests with all three options (already done for shortcode).
+		await updateShippingDestinationSetting( requestUtils, SHIPPING_DESTINATION_OPTIONS.BILLING )
+
+		await useBlocksCheckout(requestUtils);
+		isUsingBlocksCheckout = true;
+
+		// Look up product IDs via WooCommerce Store API (public, no auth needed).
+		for ( const [ key, name ] of Object.entries( PRODUCTS ) ) {
+			const response = await requestUtils.request.get(
+				'/wp-json/wc/store/v1/products',
+				{ params: { search: name, per_page: '10' } }
+			);
+			const products = await response.json();
+			const match = products.find( ( p: any ) => p.name === name );
+			if ( match ) {
+				productIds[ key ] = match.id;
+			} else {
+				throw new Error( `Product "${ name }" not found. Run wp-env start && npm run wp-env:init.` );
+			}
+		}
+	} );
+
+	// ──────────────────────────────────────────────────────
+	// FREE VIRTUAL PRODUCT
+	// Cart total = $0, no shipping needed → billing removed
+	// ──────────────────────────────────────────────────────
+
+	test( 'Blocks: Free Virtual + Gateway 1 (requires billing): billing address removed, shipping hidden', async ( {
+																											   page,
+																										   } ) => {
+		await addToCartAndCheckout( page, productIds.freeVirtual );
+		await selectGateway( page, 'test_gateway_one' );
+
+		await expectBillingIdentityShown( page );
+		await expectBillingAddressRemoved( page );
+		await expectShippingHidden( page );
+
+		await placeOrder( page );
+	} );
+
+	test( 'Blocks: Free Virtual + Gateway 2 (no billing addr req): billing address removed, shipping hidden', async ( {
+																											 page,
+																										 } ) => {
+		await addToCartAndCheckout( page, productIds.freeVirtual );
+		await selectGateway( page, 'test_gateway_two' );
+
+		await expectBillingIdentityShown( page );
+		await expectBillingAddressRemoved( page );
+		await expectShippingHidden( page );
+
+		await placeOrder( page );
+	} );
+
+	// ──────────────────────────────────────────────────
+	// PAID VIRTUAL PRODUCT
+	// Cart total > $0, no shipping needed
+	// ──────────────────────────────────────────────────
+
+	test( 'Blocks: Paid Virtual + Gateway 1 (requires billing): billing address shown, shipping hidden', async ( {
+																											 page,
+																										 } ) => {
+		await addToCartAndCheckout( page, productIds.paidVirtual );
+		await selectGateway( page, 'test_gateway_one' );
+
+		await expectBillingIdentityShown( page );
+		await expectBillingAddressShown( page );
+		await expectShippingHidden( page );
+
+		await placeOrder( page );
+	} );
+
+	test( 'Blocks: Paid Virtual + Gateway 2 (no billing addr req): billing address removed, shipping hidden', async ( {
+																											 page,
+																										 } ) => {
+		await addToCartAndCheckout( page, productIds.paidVirtual );
+		await selectGateway( page, 'test_gateway_two' );
+
+		await expectBillingIdentityShown( page );
+		await expectBillingAddressRemoved( page );
+		await expectShippingHidden( page );
+
+		// await page.locator('.wc-block-components-address-form__postcode', { has: page.locator('#billing-city') }).first().set
+
+		// Set one as visible immediately before clicking placeOrder in case it highlights red for failed validation.
+		// await page.evaluate(() => document.querySelector('.wc-block-components-address-form__postcode #billing-city').style.display = 'block');
+
+		// const billingCity = await page.locator('.wc-block-components-address-form__postcode', { has: page.locator('#billing-city') }).first();
+		// await billingCity.evaluate(element => element.style.display = 'block');
+		// await billingCity.evaluate("element => element.style.setProperty('display', 'block' , 'important')");
+
+		// div.evaluate("element => element.style.setProperty('display', 'block' , 'important')")
+
+		await placeOrder( page );
+	} );
+
+	// ──────────────────────────────────────────────────
+	// FREE SHIPPED PRODUCT
+	// Cart total = $0, shipping IS needed
+	// ──────────────────────────────────────────────────
+
+	test( 'Blocks: Free Shipped + Gateway 1 (requires shipping): billing address hidden, shipping shown', async ( {
+																											page,
+																										} ) => {
+		await addToCartAndCheckout( page, productIds.freeShipped );
+		await selectGateway( page, 'test_gateway_one' );
+
+		await expectBillingAddressRemoved( page );
+		await expectShippingIdentityShown( page );
+		await expectShippingShown( page );
+
+		await placeOrder( page );
+	} );
+
+	//
+	test( 'Blocks: Free Shipped + Gateway 2 (no billing addr req): billing address not shown, shipping shown', async ( {
+																											  page,
+																										  } ) => {
+		await addToCartAndCheckout( page, productIds.freeShipped );
+
+		// $0 cart hides all payment gateways — can't select gw2.
+
+		await expectShippingIdentityShown( page );
+		await expectBillingAddressRemoved( page );
+		await expectShippingShown( page );
+
+		await placeOrder( page );
+	} );
+
+	// ──────────────────────────────────────────────────
+	// PAID SHIPPED PRODUCT
+	// Cart total > $0, shipping IS needed
+	// ──────────────────────────────────────────────────
+
+	test( 'Blocks: Paid Shipped + Gateway 1 (requires billing): billing address shown, shipping shown', async ( {
+																											page,
+																										} ) => {
+		await addToCartAndCheckout( page, productIds.paidShipped );
+
+		await checkUseSameAddressForBilling(page, false);
+
+		await selectGateway( page, 'test_gateway_one' );
+
+		await expectBillingIdentityShown( page );
+		await expectBillingAddressShown( page );
+		await expectShippingIdentityShown( page );
+		await expectShippingShown( page );
+
+		await placeOrder( page );
+	} );
+
+	test( 'Blocks: Paid Shipped + Gateway 2 (no billing addr req): billing address removed, shipping shown', async ( {
+																											page,
+																										} ) => {
+		await addToCartAndCheckout( page, productIds.paidShipped );
+
+		// Use same address for billing
+		// I thought this would be controlled by WooCommerce settings that is set in beforeAll.
+		await checkUseSameAddressForBilling(page, false);
+
+		await selectGateway( page, 'test_gateway_two' );
+
+		await expectBillingIdentityShown( page );
+		await expectBillingAddressRemoved( page );
+		await expectShippingShown( page );
+
+		await selectGateway( page, 'test_gateway_one' );
+
+		await expectBillingAddressShown( page );
+
+		await selectGateway( page, 'test_gateway_two' );
+
+		await placeOrder( page );
+	} );
+
+	// ──────────────────────────────────────────────────────────────────
+	// DATA PRESERVATION
+	// Hiding billing fields at checkout must NOT delete saved customer
+	// address data from the database.
+	// ──────────────────────────────────────────────────────────────────
+
+	test( 'Blocks: Paid Virtual + Gateway 2: saved customer billing address is preserved in the database after checkout', async ( {
+																															  page,
+																															  requestUtils,
+																														  } ) => {
+		const timestamp = Date.now();
+		const customerData = {
+			username: 'address_test_' + timestamp,
+			email: `address_test_${ timestamp }@example.com`,
+			password: 'password',
+			first_name: 'Jane',
+			last_name: 'Doe',
+			billing: {
+				first_name: 'Jane',
+				last_name: 'Doe',
+				address_1: '742 Evergreen Terrace',
+				city: 'Springfield',
+				state: 'IL',
+				postcode: '62704',
+				country: 'US',
+				email: `address_test_${ timestamp }@example.com`,
+				phone: '5551234567',
+			},
+		};
+
+		// 1. Create customer via WP REST.
+		const user = await requestUtils.rest( {
 			method: 'POST',
-			path: '/wc/v3/products',
+			path: '/wp/v2/users',
 			data: {
-				name: 'Free Virtual Product Blocks E2E',
-				type: 'simple',
-				regular_price: '0.00',
-				virtual: true,
-				status: 'publish'
-			}
+				username: customerData.username,
+				email: customerData.email,
+				password: customerData.password,
+				first_name: customerData.first_name,
+				last_name: customerData.last_name,
+				roles: [ 'customer' ],
+			},
 		} );
-		freeProductId = freeProduct.id;
+		const userId = user.id;
 
-		const paidProduct = await requestUtils.rest( {
-			method: 'POST',
-			path: '/wc/v3/products',
-			data: {
-				name: 'Paid Simple Product Blocks E2E',
-				type: 'simple',
-				regular_price: '19.99',
-				status: 'publish'
-			}
-		} );
-		paidProductId = paidProduct.id;
+		// 2. Set the WooCommerce customer address
+		const response = await requestUtils.rest({
+			method: 'PUT',
+			path: `/wc/v3/customers/${ userId }`,
+			data: {"billing": customerData.billing, "shipping":customerData.billing}
+		}); expect( response.ok );
 
-		// Get the checkout page and set it to use blocks
-		const pages = await requestUtils.rest( {
-			method: 'GET',
-			path: '/wp/v2/pages',
-			data: {
-				search: 'Checkout',
-				per_page: 100
-			}
-		} );
-
-		const checkoutPage = pages.find( ( page: any ) =>
-			page.title.rendered.toLowerCase() === 'checkout'
-		);
-
-		if ( checkoutPage ) {
-			checkoutPageId = checkoutPage.id;
-			// Update checkout page to use WooCommerce blocks
-			await requestUtils.rest( {
-				method: 'POST',
-				path: `/wp/v2/pages/${checkoutPageId}`,
-				data: {
-					content: '<!-- wp:woocommerce/checkout -->\n<div class="wp-block-woocommerce-checkout alignwide is-loading"><!-- wp:woocommerce/checkout-fields-block -->\n<div class="wp-block-woocommerce-checkout-fields-block"><!-- wp:woocommerce/checkout-express-payment-block -->\n<div class="wp-block-woocommerce-checkout-express-payment-block"></div>\n<!-- /wp:woocommerce/checkout-express-payment-block -->\n\n<!-- wp:woocommerce/checkout-contact-information-block -->\n<div class="wp-block-woocommerce-checkout-contact-information-block"></div>\n<!-- /wp:woocommerce/checkout-contact-information-block -->\n\n<!-- wp:woocommerce/checkout-shipping-address-block -->\n<div class="wp-block-woocommerce-checkout-shipping-address-block"></div>\n<!-- /wp:woocommerce/checkout-shipping-address-block -->\n\n<!-- wp:woocommerce/checkout-billing-address-block -->\n<div class="wp-block-woocommerce-checkout-billing-address-block"></div>\n<!-- /wp:woocommerce/checkout-billing-address-block -->\n\n<!-- wp:woocommerce/checkout-shipping-methods-block -->\n<div class="wp-block-woocommerce-checkout-shipping-methods-block"></div>\n<!-- /wp:woocommerce/checkout-shipping-methods-block -->\n\n<!-- wp:woocommerce/checkout-payment-block -->\n<div class="wp-block-woocommerce-checkout-payment-block"></div>\n<!-- /wp:woocommerce/checkout-payment-block -->\n\n<!-- wp:woocommerce/checkout-order-note-block -->\n<div class="wp-block-woocommerce-checkout-order-note-block"></div>\n<!-- /wp:woocommerce/checkout-order-note-block -->\n\n<!-- wp:woocommerce/checkout-terms-block -->\n<div class="wp-block-woocommerce-checkout-terms-block"></div>\n<!-- /wp:woocommerce/checkout-terms-block -->\n\n<!-- wp:woocommerce/checkout-actions-block -->\n<div class="wp-block-woocommerce-checkout-actions-block"></div>\n<!-- /wp:woocommerce/checkout-actions-block --></div>\n<!-- /wp:woocommerce/checkout-fields-block -->\n\n<!-- wp:woocommerce/checkout-order-summary-block -->\n<div class="wp-block-woocommerce-checkout-order-summary-block"><!-- wp:woocommerce/checkout-order-summary-cart-items-block -->\n<div class="wp-block-woocommerce-checkout-order-summary-cart-items-block"></div>\n<!-- /wp:woocommerce/checkout-order-summary-cart-items-block -->\n\n<!-- wp:woocommerce/checkout-order-summary-coupon-form-block -->\n<div class="wp-block-woocommerce-checkout-order-summary-coupon-form-block"></div>\n<!-- /wp:woocommerce/checkout-order-summary-coupon-form-block -->\n\n<!-- wp:woocommerce/checkout-order-summary-subtotal-block -->\n<div class="wp-block-woocommerce-checkout-order-summary-subtotal-block"></div>\n<!-- /wp:woocommerce/checkout-order-summary-subtotal-block -->\n\n<!-- wp:woocommerce/checkout-order-summary-fee-block -->\n<div class="wp-block-woocommerce-checkout-order-summary-fee-block"></div>\n<!-- /wp:woocommerce/checkout-order-summary-fee-block -->\n\n<!-- wp:woocommerce/checkout-order-summary-discount-block -->\n<div class="wp-block-woocommerce-checkout-order-summary-discount-block"></div>\n<!-- /wp:woocommerce/checkout-order-summary-discount-block -->\n\n<!-- wp:woocommerce/checkout-order-summary-shipping-block -->\n<div class="wp-block-woocommerce-checkout-order-summary-shipping-block"></div>\n<!-- /wp:woocommerce/checkout-order-summary-shipping-block -->\n\n<!-- wp:woocommerce/checkout-order-summary-taxes-block -->\n<div class="wp-block-woocommerce-checkout-order-summary-taxes-block"></div>\n<!-- /wp:woocommerce/checkout-order-summary-taxes-block -->\n\n<!-- wp:woocommerce/checkout-order-summary-totals-block -->\n<div class="wp-block-woocommerce-checkout-order-summary-totals-block"></div>\n<!-- /wp:woocommerce/checkout-order-summary-totals-block --></div>\n<!-- /wp:woocommerce/checkout-order-summary-block --></div>\n<!-- /wp:woocommerce/checkout -->'
-				}
-			} );
-		}
-	} );
-
-	test.afterAll( async ( { requestUtils } ) => {
-		// Cleanup test products
-		if ( freeProductId ) {
-			await requestUtils.rest( {
-				method: 'DELETE',
-				path: `/wc/v3/products/${freeProductId}`,
-				data: { force: true }
-			} );
-		}
-		if ( paidProductId ) {
-			await requestUtils.rest( {
-				method: 'DELETE',
-				path: `/wc/v3/products/${paidProductId}`,
-				data: { force: true }
-			} );
-		}
-	} );
-
-	test.beforeEach( async ( { page } ) => {
-		// Clear cart before each test
-		await page.goto( '/?wc-ajax=get_refreshed_fragments' );
-		await page.evaluate( () => {
-			// Clear WooCommerce cart via sessionStorage/localStorage
-			sessionStorage.clear();
-			localStorage.clear();
-		} );
-	} );
-
-	test( 'Free product, no shipping: billing address fields are still shown in blocks checkout', async ( { page } ) => {
-
-		// Add free virtual product to cart
-		await page.goto( `/?add-to-cart=${freeProductId}` );
+		// 3. Log in as the customer.
+		await page.context().clearCookies();
+		await page.goto( '/my-account/' );
 		await page.waitForLoadState( 'networkidle' );
+		await page.fill( '#username', customerData.username );
+		await page.fill( '#password', customerData.password );
+		await page.click( 'button[name="login"]' );
+		await page.waitForLoadState( 'networkidle' );
+		await expect( page.locator( '.woocommerce-MyAccount-content' ) ).toBeVisible( { timeout: 10000 } );
 
-		// Go to checkout
+		// 4. Now place an order with gw2 (billing hidden).
+		await page.goto( `/?add-to-cart=${ productIds.paidVirtual }` );
+		await page.waitForLoadState( 'networkidle' );
 		await page.goto( '/checkout/' );
 		await page.waitForLoadState( 'networkidle' );
 
-		// Wait for blocks to load
-		await page.waitForSelector( '.wp-block-woocommerce-checkout', { timeout: 10000 } );
-
-		// Plugin has NO effect on blocks - billing address fields should still be visible
-		// The blocks checkout uses its own field management, not the woocommerce_billing_fields filter
-
-		// Look for blocks-specific billing field selectors
-		const billingFieldSelectors = [
-			'[id*="billing-address"][id*="address_1"], [name*="billingAddress"][name*="address_1"]',
-			'[id*="billing-address"][id*="city"], [name*="billingAddress"][name*="city"]',
-			'[id*="billing-address"][id*="state"], [name*="billingAddress"][name*="state"]',
-			'[id*="billing-address"][id*="postcode"], [name*="billingAddress"][name*="postcode"]',
-			'[id*="billing-address"][id*="country"], [name*="billingAddress"][name*="country"]',
-			'[id*="billing-address"][id*="phone"], [name*="billingAddress"][name*="phone"]'
-		];
-
-		// Wait a bit for the blocks to render fields
-		await page.waitForTimeout( 2000 );
-
-		let visibleFieldsCount = 0;
-		for ( const selector of billingFieldSelectors ) {
-			const field = page.locator( selector );
-			const count = await field.count();
-			if ( count > 0 ) {
-				const isVisible = await field.first().isVisible();
-				if ( isVisible ) {
-					visibleFieldsCount++;
-				}
-			}
-		}
-
-		// In blocks checkout, billing address fields should still be present even for free orders
-		// because the plugin doesn't affect blocks checkout
-		expect( visibleFieldsCount ).toBeGreaterThan( 0 );
-
-		// Verify this is indeed a free order
-		const total = page.locator( '.wc-block-components-totals-item__value, .wc-block-formatted-money-amount' );
-		if ( await total.count() > 0 ) {
-			await expect( total.last() ).toContainText( '$0' );
-		}
-	} );
-
-	test( 'Blocks checkout still requires billing address for free orders', async ( { page } ) => {
-		// Add free virtual product to cart
-		await page.goto( `/?add-to-cart=${freeProductId}` );
-		await page.waitForLoadState( 'networkidle' );
-
-		// Go to checkout
-		await page.goto( '/checkout/' );
-		await page.waitForLoadState( 'networkidle' );
-
-		// Wait for blocks to load
-		await page.waitForSelector( '.wp-block-woocommerce-checkout', { timeout: 10000 } );
-		await page.waitForTimeout( 3000 );
-
-		// Try to find and fill only email field if it exists
-		const emailField = page.locator( '[id*="email"], [name*="email"]' );
-		if ( await emailField.count() > 0 ) {
-			await emailField.first().fill( 'john@example.com' );
-		}
-
-		// Try to find and click the place order button
-		const placeOrderButton = page.locator(
-			'.wc-block-components-checkout-place-order-button, [class*="place-order"], button:has-text("Place order")'
-		);
-
-		if ( await placeOrderButton.count() > 0 && await placeOrderButton.first().isEnabled() ) {
-			await placeOrderButton.first().click();
+		// Checkout fields are hidden behind an "Edit" button
+		const editButton = await page.locator('.wc-block-components-address-card__edit');
+		if ( await editButton.first().isVisible() ) {
+			await editButton.first().click();
 			await page.waitForLoadState( 'networkidle' );
-			await page.waitForTimeout( 2000 );
+			await page.waitForTimeout( 500 );
+		}
 
-			// Should either show validation errors or still be on checkout page
-			// (not reach order confirmation like the shortcode version does)
-			const currentUrl = page.url();
+		await selectGateway( page, 'test_gateway_two' );
 
-			// Look for validation errors or still being on checkout
-			const hasValidationErrors = await page.locator(
-				'.wc-block-components-validation-error, [class*="error"], [class*="notice"]'
-			).count() > 0;
+		// Billing address fields should be hidden.
+		await expectBillingAddressRemoved( page );
 
-			const stillOnCheckout = currentUrl.includes( 'checkout' ) && !currentUrl.includes( 'order-received' );
+		await page.fill('#billing-first_name', customerData.billing.first_name);
+		await page.fill( '#billing-last_name', customerData.billing.last_name );
+		await page.fill('#email', customerData.billing.email);
 
-			// Either we get validation errors OR we're still on checkout (not order confirmation)
-			// This demonstrates the plugin doesn't work with blocks - blocks still require full address
-			expect( hasValidationErrors || stillOnCheckout ).toBe( true );
-
-			if ( !currentUrl.includes( 'order-received' ) ) {
-				console.log( 'Blocks checkout correctly prevented order completion without full billing address' );
-			}
+		if(isUsingBlocksCheckout){
+			const placeOrderButton = await page.locator( '.wc-block-checkout__actions_row' ).first().getByText( 'Place Order' );
+			await placeOrderButton.click();
 		} else {
-			// If we can't find the button or it's disabled, that also proves billing address is required
-			console.log( 'Place order button not available, indicating required fields missing' );
+			await page.click( '#place_order' );
 		}
-	} );
 
-	test( 'Paid product in blocks checkout: billing fields shown as expected', async ( { page } ) => {
-		// Add paid product to cart
-		await page.goto( `/?add-to-cart=${paidProductId}` );
+		await page.waitForURL( /order-received/, { timeout: 30000 } );
+		await expect(
+			page.locator( '.woocommerce-thankyou-order-received, .woocommerce-order-received' ).first()
+		).toBeVisible();
+
+		// 5. Verify the saved billing address is still intact.
+		//    Navigate to My Account → Edit Address to check stored values.
+		await page.goto( '/my-account/edit-address/billing/' );
 		await page.waitForLoadState( 'networkidle' );
 
-		// Go to checkout
-		await page.goto( '/checkout/' );
-		await page.waitForLoadState( 'networkidle' );
+		await expect( page.locator( '#billing_address_1' ) ).toHaveValue( '742 Evergreen Terrace' );
+		await expect( page.locator( '#billing_city' ) ).toHaveValue( 'Springfield' );
+		await expect( page.locator( '#billing_postcode' ) ).toHaveValue( '62704' );
+		await expect( page.locator( '#billing_phone' ) ).toHaveValue( '5551234567' );
 
-		// Wait for blocks to load
-		await page.waitForSelector( '.wp-block-woocommerce-checkout', { timeout: 10000 } );
-		await page.waitForTimeout( 2000 );
-
-		// For paid products, blocks checkout should show billing fields (as normal)
-		const billingFieldSelectors = [
-			'[id*="billing-address"][id*="address_1"], [name*="billingAddress"][name*="address_1"]',
-			'[id*="billing-address"][id*="city"], [name*="billingAddress"][name*="city"]',
-			'[id*="billing-address"][id*="state"], [name*="billingAddress"][name*="state"]'
-		];
-
-		let visibleFieldsCount = 0;
-		for ( const selector of billingFieldSelectors ) {
-			const field = page.locator( selector );
-			const count = await field.count();
-			if ( count > 0 ) {
-				const isVisible = await field.first().isVisible();
-				if ( isVisible ) {
-					visibleFieldsCount++;
-				}
-			}
-		}
-
-		expect( visibleFieldsCount ).toBeGreaterThan( 0 );
-
-		// Verify this is a paid order
-		const total = page.locator( '.wc-block-components-totals-item__value, .wc-block-formatted-money-amount' );
-		if ( await total.count() > 0 ) {
-			await expect( total.last() ).toContainText( '$19.99' );
-		}
+		// 6. Clean up: delete the test customer.
+		await requestUtils.rest( {
+			method: 'DELETE',
+			path: `/wp/v2/users/${ userId }?force=true&reassign=1`,
+		} );
 	} );
 } );
