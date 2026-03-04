@@ -5,6 +5,8 @@
 
 namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout\Development_Plugin\Gateways;
 
+use KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce\WC_Payment_Gateway;
+
 /**
  * Test payment gateway that requires billing fields (standard behaviour).
  */
@@ -27,10 +29,6 @@ class Test_Gateway_One extends \WC_Payment_Gateway {
 	 */
 	public function __construct() {
 		$this->update_option( 'enabled', 'yes' );
-	}
-
-	public function is_available() {
-		return true;
 	}
 
 	/**

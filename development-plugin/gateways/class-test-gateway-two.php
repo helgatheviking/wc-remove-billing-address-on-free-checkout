@@ -34,10 +34,6 @@ class Test_Gateway_Two extends WC_Payment_Gateway {
 		$this->update_option( 'enabled', 'yes' );
 	}
 
-	public function is_available() {
-		return true;
-	}
-
 	/**
 	 * @inheritDoc
 	 *

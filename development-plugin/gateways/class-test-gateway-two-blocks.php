@@ -49,7 +49,6 @@ class Test_Gateway_Two_Blocks extends AbstractPaymentMethodType {
 	 * @return bool
 	 */
 	public function is_active(): bool {
-		return true;
 		return $this->gateway->is_available();
 	}
 
