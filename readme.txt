@@ -10,7 +10,7 @@ License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
 == Description ==
 
-It can be a hassle to fill out your billing address if you aren't actually paying any money. This plugin removes the billing address fields from WooCommerce checkout when the cart total is 0, ie: Free. 
+It can be a hassle to fill out your billing address if you aren't actually paying any money. This plugin removes the billing address fields from WooCommerce checkout when the cart total is 0, ie: Free.
 
 Specifically the following fields are removed:
 
@@ -52,10 +52,10 @@ To achieve this you can add the following snippet to your theme's `functions.php
  * @param array   $fields    The billing fields we are removing
  * @return array
  */
-function kia_do_not_remove_billing_phone( $fields ) {
+function do_not_remove_billing_phone( $fields ) {
     return array_diff( $fields, array( 'billing_phone' ) );
 }
-add_filter( 'wc_billing_fields_to_remove_for_free_checkout', 'kia_do_not_remove_billing_phone' );
+add_filter( 'wc_billing_fields_to_remove_for_free_checkout', 'do_not_remove_billing_phone' );
 `
 
 == Changelog ==

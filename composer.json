@@ -1,0 +1,135 @@
+{
+    "name": "helgatheviking/wc-remove-billing-address-on-free-checkout",
+    "description": "Remove billing address fields from checkout when cart total is free",
+    "type": "wordpress-plugin",
+    "license": "GPL-3.0+",
+    "authors": [
+        {
+            "name": "Kathy Darling",
+            "email": "admin@kathyisawesome.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "config": {
+        "allow-plugins": {
+            "alleyinteractive/composer-wordpress-autoloader": true,
+            "composer/installers": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "johnpbloch/wordpress-core-installer": true,
+            "phpstan/extension-installer": true
+        },
+        "platform": {
+            "php": "8.1"
+        },
+        "process-timeout": 0,
+        "sort-packages": true
+    },
+  "autoload": {
+    "wordpress-autoloader":{
+      "KIA\\WC_Remove_Billing_Address_On_Free_Checkout": "includes"
+    } ,
+    "classmap": [
+      "includes"
+    ]
+  },
+    "autoload-dev": {
+        "psr-4": {
+            "WC_Remove_Billing\\": [
+                "tests/unit",
+                "tests/wpunit",
+                "tests/integration"
+            ]
+        },
+        "classmap": [
+            "tests/_support",
+            "tests/unit",
+            "tests/wpunit"
+        ]
+    },
+    "repositories": {
+      "wordpress/wordpress": {
+        "url": "https://github.com/WordPress/wordpress-develop",
+        "type": "git"
+      },
+      "wpackagist": {
+        "type": "composer",
+        "url": "https://wpackagist.org"
+        },
+      "woocommerce/woocommerce": {
+        "type": "package",
+        "package": {
+          "name": "woocommerce/woocommerce",
+          "version": "dev-trunk",
+          "source": {
+            "url": "https://github.com/woocommerce/woocommerce/",
+            "type": "git",
+            "reference": "trunk"
+          },
+          "installation-source": "dist"
+        }
+      }
+    },
+    "require": {
+        "php": ">=8.0"
+    },
+    "require-dev": {
+        "10up/wp_mock": "*",
+        "alleyinteractive/composer-wordpress-autoloader": "^1.2",
+        "antecedent/patchwork": "*",
+        "brianhenryie/color-logger": "*",
+        "brianhenryie/php-codecoverage-markdown": "*",
+        "brianhenryie/strauss": "^0.20.1",
+        "dealerdirect/phpcodesniffer-composer-installer": "*",
+        "johnpbloch/wordpress": "*",
+        "lucatume/wp-browser": ">=4.0",
+        "php-stubs/woocommerce-stubs": "*",
+        "phpstan/extension-installer": "*",
+        "phpunit/phpcov": "*",
+        "rector/rector": "*",
+        "squizlabs/php_codesniffer": "*",
+        "szepeviktor/phpstan-wordpress": "*",
+        "woocommerce/woocommerce": "dev-trunk",
+        "wordpress/wordpress": "*",
+        "wp-cli/dist-archive-command": "*",
+        "wp-cli/wp-cli-bundle": "*",
+        "wp-coding-standards/wpcs": "*",
+        "wpackagist-plugin/query-monitor": "*",
+        "wpackagist-plugin/woocommerce": "*",
+        "wpackagist-theme/twentytwenty": "*"
+    },
+    "scripts": {
+        "test": [
+            "codecept run unit",
+            "codecept run wpunit"
+        ],
+        "test-coverage": [
+            "codecept run unit --coverage unit.cov",
+            "codecept run wpunit --coverage wpunit.cov",
+            "phpcov merge --clover tests/_output/clover.xml --html tests/_output/html tests/_output;",
+            "open tests/_output/html/index.html"
+        ],
+        "cs": [
+            "phpcs || true",
+            "phpstan analyse --memory-limit 1G"
+        ],
+        "cs-fix": [
+            "phpcbf || true",
+            "@cs"
+        ],
+        "cs-fix-strict": [
+            "phpcbf || true",
+            "@cs-strict"
+        ],
+        "cs-strict": [
+            "phpcs || true",
+            "phpstan analyse --level max --memory-limit 1G"
+        ],
+        "cs-changes": [
+            "updated_files=$(echo $(git diff --name-only `git merge-base origin/master HEAD` | grep \\.php | tr '\\n' '\\0' | xargs -0 ls -1df 2>/dev/null)); if [ -n \"$updated_files\" ]; then phpcbf $(echo $updated_files); phpcs $(echo $updated_files); phpstan analyse $(echo $updated_files) --memory-limit 1G; else echo \"No modified php files for phpstan.\"; fi;"
+        ],
+        "cs-changes-strict": [
+            "updated_files=$(echo $(git diff --name-only `git merge-base origin/master HEAD` | grep \\.php | tr '\\n' '\\0' | xargs -0 ls -1df 2>/dev/null)); if [ -n \"$updated_files\" ]; then phpcbf $(echo $updated_files); phpcs $(echo $updated_files); phpstan analyse $(echo $updated_files) --level max --memory-limit 1G; else echo \"No modified php files for phpstan.\"; fi;"
+        ]
+    }
+}

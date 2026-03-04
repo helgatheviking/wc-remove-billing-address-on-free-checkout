@@ -1,0 +1,24 @@
+parameters:
+    level: 8
+    paths:
+        - wc-remove-billing-address-on-free-checkout.php
+        - tests/unit/
+        - tests/wpunit/
+
+    scanDirectories:
+#        - vendor/php-stubs/woocommerce-stubs/
+#        - vendor/szepeviktor/phpstan-wordpress/
+        - wp-content/plugins/woocommerce/
+
+    scanFiles:
+        - vendor/antecedent/patchwork/Patchwork.php
+
+    excludePaths:
+#        - tests/_support/_generated
+        - build
+        - tests/_data
+        - tests/_output
+        - vendor
+        - node_modules
+
+    reportUnmatchedIgnoredErrors: false

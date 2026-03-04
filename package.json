@@ -1,0 +1,40 @@
+{
+  "name": "wc-remove-billing-address-on-free-checkout",
+  "version": "1.0.1",
+  "description": "Remove billing address fields from checkout when cart total is free",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "wp-scripts build",
+    "start": "wp-scripts start",
+    "type-check": "tsc --noEmit",
+    "wp-env": "wp-env start",
+    "wp-env:stop": "wp-env stop",
+    "wp-env:clean": "wp-env clean",
+    "test:e2e": "playwright test"
+  },
+  "keywords": [
+    "woocommerce",
+    "checkout",
+    "billing",
+    "wordpress-plugin"
+  ],
+  "author": "Kathy Darling",
+  "license": "GPL-3.0+",
+  "devDependencies": {
+    "@playwright/test": "*",
+    "@types/jquery": "^3.5",
+    "@types/node": "^20.0",
+    "@types/react": "^18.3",
+    "@types/react-dom": "^18.3",
+    "@woocommerce/dependency-extraction-webpack-plugin": "^2.2",
+    "@wordpress/e2e-test-utils-playwright": "^1",
+    "@wordpress/html-entities": "^4.40.0",
+    "@wordpress/i18n": "*",
+    "@wordpress/env": "^10.39.0",
+    "@wordpress/scripts": "^30",
+    "dotenv": "^17.2",
+    "typescript": "*"
+  }
+}
