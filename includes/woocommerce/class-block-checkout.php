@@ -8,6 +8,7 @@ namespace KIA\WC_Remove_Billing_Address_On_Free_Checkout\WooCommerce;
 
 use Automattic\WooCommerce\Blocks\Integrations\IntegrationInterface;
 use Automattic\WooCommerce\Blocks\Integrations\IntegrationRegistry;
+use WC_Order;
 use WC_Payment_Gateways;
 
 /**
@@ -19,8 +20,9 @@ class Block_Checkout implements IntegrationInterface {
 	 * Let WooCommerce know about the plugin in its `checkout_block` registry.
 	 *
 	 * @hooked woocommerce_blocks_checkout_block_registration
+	 * @see IntegrationRegistry::initialize()
 	 *
-	 * @param IntegrationRegistry $integration_registry
+	 * @param IntegrationRegistry $integration_registry The WooCommerce instance for blocks checkout integrations.
 	 */
 	public function register_integration( IntegrationRegistry $integration_registry ): void {
 		$integration_registry->register( $this );
@@ -52,7 +54,8 @@ class Block_Checkout implements IntegrationInterface {
 	}
 
 	/**
-	 * Hide billing address fields at page-load time for free + no-shipping carts.
+	 * Hide billing address fields at page-load time for free + no-shipping carts,
+	 * or when a gateway that doesn't require billing fields is selected.
 	 *
 	 * Filters the per-country locale array used by WooCommerce to determine which
 	 * checkout fields are required/hidden. Because WC_Countries::get_country_locale()
@@ -60,31 +63,45 @@ class Block_Checkout implements IntegrationInterface {
 	 * entries) and `woocommerce_get_country_locale_default` (for the default/fallback)
 	 * must be filtered.
 	 *
+	 * During a Store API checkout request, WooCommerce calls WC()->session->set(
+	 * 'chosen_payment_method', ...) in update_order_from_request() BEFORE
+	 * validate_address_fields() calls get_country_locale() — so the session already
+	 * holds the chosen gateway when this filter runs.
+	 *
 	 * @param array $locale Country-keyed locale array (country_code => field definitions).
 	 * @return array Modified locale with address fields hidden.
 	 */
 	public function hide_address_fields_for_free_virtual_cart( array $locale ): array {
+		if ( ! $this->is_checkout_context() ) {
+			return $locale;
+		}
+
 		$cart = WC()->cart;
-		if ( ! $cart || $cart->needs_shipping() ) {
+		if ( ! $cart ) {
 			return $locale;
 		}
-		if ( 0.0 !== floatval( $cart->get_total( 'edit' ) ) ) {
+
+		$is_free_virtual = ! $cart->needs_shipping() && 0.0 === floatval( $cart->get_total( 'edit' ) );
+
+		if ( ! $is_free_virtual && ! $this->is_no_billing_gateway_selected() ) {
 			return $locale;
 		}
-		$fields_to_hide = [ 'address_1', 'address_2', 'city', 'state', 'postcode', 'phone' ];
+
+		$fields_to_hide = array( 'address_1', 'address_2', 'city', 'state', 'postcode', 'phone' );
 		foreach ( array_keys( $locale ) as $country_code ) {
 			foreach ( $fields_to_hide as $field ) {
-				$locale[ $country_code ][ $field ] = [
+				$locale[ $country_code ][ $field ] = array(
 					'required' => false,
 					'hidden'   => true,
-				];
+				);
 			}
 		}
 		return $locale;
 	}
 
 	/**
-	 * Hide billing address fields in the default locale for free + no-shipping carts.
+	 * Hide billing address fields in the default locale for free + no-shipping carts,
+	 * or when a gateway that doesn't require billing fields is selected.
 	 *
 	 * The `woocommerce_get_country_locale_default` filter receives a flat field-keyed
 	 * array rather than the country-keyed array of `woocommerce_get_country_locale`.
@@ -96,18 +113,86 @@ class Block_Checkout implements IntegrationInterface {
 	 * @return array Modified locale with address fields marked not-required and hidden.
 	 */
 	public function hide_address_fields_default_locale_for_free_virtual_cart( array $locale ): array {
+		if ( ! $this->is_checkout_context() ) {
+			return $locale;
+		}
+
 		$cart = WC()->cart;
-		if ( ! $cart || $cart->needs_shipping() ) {
+		if ( ! $cart ) {
 			return $locale;
 		}
-		if ( 0.0 !== floatval( $cart->get_total( 'edit' ) ) ) {
+
+		$is_free_virtual = ! $cart->needs_shipping() && 0.0 === floatval( $cart->get_total( 'edit' ) );
+
+		if ( ! $is_free_virtual && ! $this->is_no_billing_gateway_selected() ) {
 			return $locale;
 		}
-		$fields_to_hide = [ 'address_1', 'address_2', 'city', 'state', 'postcode', 'phone' ];
+
+		$fields_to_hide = array( 'address_1', 'address_2', 'city', 'state', 'postcode', 'phone' );
 		foreach ( $fields_to_hide as $field ) {
-			$locale[ $field ] = array_merge( $locale[ $field ] ?? [], [ 'required' => false, 'hidden' => true ] );
+			$locale[ $field ] = array_merge(
+				$locale[ $field ] ?? array(),
+				array(
+					'required' => false,
+					'hidden'   => true,
+				)
+			);
 		}
 		return $locale;
+	}
+
+	/**
+	 * Whether the current request is a checkout page render or a Store API request.
+	 *
+	 * The locale filters must only apply in these contexts. On other pages (e.g.
+	 * /my-account/edit-address/billing/) the WC session may still hold the last
+	 * chosen payment method, which would incorrectly hide billing fields.
+	 *
+	 * @return bool
+	 */
+	private function is_checkout_context(): bool {
+		if ( is_checkout() ) {
+			return true;
+		}
+		// Store API REST request (e.g. POST /wc/store/v1/checkout).
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			$uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+			return false !== strpos( $uri, '/wc/store/' );
+		}
+		return false;
+	}
+
+	/**
+	 * Whether the currently chosen payment method (from the WC session) is one
+	 * that has declared it does not require billing address fields.
+	 *
+	 * @return bool
+	 */
+	private function is_no_billing_gateway_selected(): bool {
+		$chosen = WC()->session ? WC()->session->get( 'chosen_payment_method', '' ) : '';
+		if ( empty( $chosen ) ) {
+			return false;
+		}
+		return in_array( $chosen, $this->get_no_billing_gateway_ids(), true );
+	}
+
+	/**
+	 * Return the list of payment gateway IDs that don't require billing address fields.
+	 *
+	 * @return string[]
+	 */
+	private function get_no_billing_gateway_ids(): array {
+		$gateways   = WC_Payment_Gateways::instance()->payment_gateways();
+		$no_billing = array();
+		foreach ( $gateways as $id => $gateway ) {
+			if ( property_exists( $gateway, 'require_billing_fields' ) && false === $gateway->require_billing_fields ) {
+				$no_billing[] = $id;
+			}
+			if ( 'cod' === $id ) {
+				$no_billing[] = $id;
+			}
+		}
+		return array_unique( $no_billing );
 	}
 
 	/**
@@ -125,7 +210,7 @@ class Block_Checkout implements IntegrationInterface {
 		wp_register_script(
 			'wc-remove-billing-address-on-free-checkout-blocks',
 			plugins_url( 'build/wc-remove-billing-address-on-free-checkout-blocks.js', __DIR__ . '/../../../' ),
-			$script_asset['dependencies'],
+			array_unique( array_merge( $script_asset['dependencies'], array( 'wc-blocks-data-store', 'wc-settings' ) ) ),
 			$script_asset['version'],
 			true
 		);
@@ -152,23 +237,44 @@ class Block_Checkout implements IntegrationInterface {
 	}
 
 	/**
-	 * Return the list of gateway IDs that don't require billing fields.
-	 * This data is passed to the JS integration via wp_localize_script.
+	 * Return the list of gateway IDs that don't require billing fields, plus store
+	 * address data so the JS can inject valid dummy billing data.
 	 *
 	 * @see IntegrationInterface::get_script_data()
 	 * @return array<string,mixed>
 	 */
 	public function get_script_data(): array {
-		$gateways   = WC_Payment_Gateways::instance()->payment_gateways();
-		$no_billing = [];
-		foreach ( $gateways as $id => $gateway ) {
-			if ( property_exists( $gateway, 'require_billing_fields' ) && false === $gateway->require_billing_fields ) {
-				$no_billing[] = $id;
-			}
-			if ( 'cod' === $id ) {
-				$no_billing[] = $id;
-			}
+		$base_location = wc_get_base_location();
+		return array(
+			'no_billing_gateways' => $this->get_no_billing_gateway_ids(),
+			'store_country'       => $base_location['country'] ?? '',
+			'store_state'         => $base_location['state'] ?? '',
+			'store_postcode'      => get_option( 'woocommerce_store_postcode', '' ),
+		);
+	}
+
+	/**
+	 * After a Store API order is placed with a no-billing gateway, clear the dummy
+	 * billing address fields that were injected client-side to pass validation.
+	 *
+	 * Preserves billing_first_name, billing_last_name, and billing_email so that
+	 * order confirmation emails remain functional.
+	 *
+	 * @hooked woocommerce_store_api_checkout_order_processed
+	 *
+	 * @param WC_Order $order Newly placed order object.
+	 * @return void
+	 */
+	public function clear_dummy_billing_for_no_billing_gateway( WC_Order $order ): void {
+		if ( ! in_array( $order->get_payment_method(), $this->get_no_billing_gateway_ids(), true ) ) {
+			return;
 		}
-		return [ 'no_billing_gateways' => array_unique( $no_billing ) ];
+		$order->set_billing_address_1( '' );
+		$order->set_billing_address_2( '' );
+		$order->set_billing_city( '' );
+		$order->set_billing_postcode( '' );
+		$order->set_billing_state( '' );
+		$order->set_billing_phone( '' );
+		$order->save();
 	}
 }

@@ -6,6 +6,9 @@ declare module '@wordpress/data' {
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	export function select< T = any >( storeNameOrDescriptor: string ): T;
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	export function dispatch< T = any >( storeNameOrDescriptor: string ): T;
 }
 
 declare module '@woocommerce/settings' {

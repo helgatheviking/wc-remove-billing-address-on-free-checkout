@@ -64,6 +64,25 @@ class WC_Remove_Billing_Address_On_Free_Checkout {
 		// Store API requests, where BlockTypesController is skipped.
 		add_filter( 'woocommerce_get_country_locale', array( $block_checkout, 'hide_address_fields_for_free_virtual_cart' ) );
 		add_filter( 'woocommerce_get_country_locale_default', array( $block_checkout, 'hide_address_fields_default_locale_for_free_virtual_cart' ) );
+
+		// Clear dummy billing data from orders placed via no-billing gateways.
+		// Must run during Store API requests (where BlockTypesController is skipped).
+		add_action( 'woocommerce_store_api_checkout_order_processed', array( $block_checkout, 'clear_dummy_billing_for_no_billing_gateway' ) );
+
+		// Prevent the sentinel dummy values from being written to the logged-in
+		// customer's user meta when the background cart update fires.
+		add_filter(
+			'update_user_metadata',
+			static function ( $check, int $_object_id, string $meta_key, $meta_value ) {
+				$sentinel_keys = array( 'billing_address_1', 'billing_city' );
+				if ( in_array( $meta_key, $sentinel_keys, true ) && '__nob__' === $meta_value ) {
+					return false;
+				}
+				return $check;
+			},
+			10,
+			4
+		);
 	}
 
 	/**
