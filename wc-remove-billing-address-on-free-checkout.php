@@ -19,6 +19,22 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
+ * Declare WooCommerce Features Compatibility
+ */
+add_action( 'before_woocommerce_init', function() {
+	if ( ! class_exists( 'Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
+		return;
+	}
+
+	// High Performance Order Storage (HPOS) Compatibility
+	\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', plugin_basename( __FILE__ ), true );
+
+	// Cart/Checkout Blocks compatibility - Currently False.
+	\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', plugin_basename( __FILE__ ), true );
+} );
+
+
+/**
  * Remove required billing fields if Order total is 0.00
  *
  *
