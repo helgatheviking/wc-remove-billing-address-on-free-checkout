@@ -59,6 +59,44 @@ function remove_fields( $fields ) {
 	return $fields;
 }
 add_filter( 'woocommerce_billing_fields', __NAMESPACE__ . '\\remove_fields' );
+
+/**
+ * Remove required billing fields from Checkout Block if Order total is 0.00
+ * 
+ * @since 2.0.0
+ *
+ * @param array   $locale    The shipping locale, which contains the fields we want to remove.
+ * @return array
+ */
+function remove_fields_from_block( $locale ) {
+	if ( needs_billing_address() ) {
+		return $locale;
+	}
+
+	$fields_to_remove = fields_to_remove();
+
+	// Remove each field from each locale by setting it to hidden and not required.
+	foreach ( $locale as $country => $value ) {
+
+		foreach ( $fields_to_remove as $field ) {
+
+			// Remove the billing prefix.
+			$field = str_replace( 'billing_', '', $field );
+			
+			// Set the field to not required and hidden.
+			$locale[ $country ][ $field ] = array(
+				'required' => false,
+				'hidden'   => true,
+			);
+
+		}
+
+	}
+
+	return $locale;
+}
+add_filter( 'woocommerce_get_country_locale', __NAMESPACE__ . '\\remove_fields_from_block' );
+
 /**
  * Does this cart need a billing address?
  * 
