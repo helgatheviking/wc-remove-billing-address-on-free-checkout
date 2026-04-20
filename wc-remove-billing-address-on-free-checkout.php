@@ -16,6 +16,9 @@
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  *
  */
+
+namespace HelgaTheViking\RemoveBillingAddressForFreeCheckout;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -36,12 +39,14 @@ add_action( 'before_woocommerce_init', function() {
 
 /**
  * Remove required billing fields if Order total is 0.00
+ * 
+ * @since 2.0.0
  *
  *
  * @param array   $fields    The billing fields
  * @return array
  */
-function kia_remove_billing_address_fields_for_free_checkout( $fields ) { 
+function remove_fields( $fields ) { 
 
     $cart_total = floatval( WC()->cart->get_total( 'edit' ) );
 
@@ -72,4 +77,4 @@ function kia_remove_billing_address_fields_for_free_checkout( $fields ) {
 
     return $fields;
 }
-add_filter( 'woocommerce_billing_fields', 'kia_remove_billing_address_fields_for_free_checkout' );
+add_filter( 'woocommerce_billing_fields', __NAMESPACE__ . '\\remove_fields' );

@@ -62,6 +62,9 @@ add_filter( 'wc_billing_fields_to_remove_for_free_checkout', 'kia_do_not_remove_
 
 == Changelog ==
 
+= 2026-xx-xx - 2.0.0 =
+* Fix: Rename kia_remove_billing_address_fields_for_free_checkout() to HelgaTheViking\RemoveBillingAddressForFreeCheckout\remove_fields()
+
 = 2021-12-28 - 1.0.1 =
 * New: Introduce `wc_billing_fields_to_remove_for_free_checkout` filter.
 * Fix: Do not remove address when shipping is required. Fixes "Please enter an address to continue." error on checkout.
