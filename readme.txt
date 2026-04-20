@@ -1,9 +1,9 @@
 === Remove WooCommerce Billing Address Fields for Free Checkout ===
 Contributors: helgatheviking
-Donate link: https://www.paypal.com/fundraiser/charity/1451316
+Donate link: https://www.paypal.me/helgatheviking
 Tags: woocommerce, checkout, billing, address
 Requires at least: 5.0.0
-Tested up to: 5.8.2
+Tested up to: 6.4.0
 Stable tag: 1.0.1
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -11,6 +11,8 @@ License URI: http://www.gnu.org/licenses/gpl-3.0.html
 == Description ==
 
 It can be a hassle to fill out your billing address if you aren't actually paying any money. This plugin removes the billing address fields from WooCommerce checkout when the cart total is 0, ie: Free. 
+
+**NOTE** This plugin only supports the `[woocommerce_checkout]` shortcode. The Checkout block is currently _not_ extensible. We are following the [discussion](https://github.com/woocommerce/woocommerce/discussions/42996) and when it becomes possible to remove fields we will look at adding support.
 
 Specifically the following fields are removed:
 
@@ -59,6 +61,10 @@ add_filter( 'wc_billing_fields_to_remove_for_free_checkout', 'kia_do_not_remove_
 `
 
 == Changelog ==
+
+= 2026-xx-xx - 2.0.0 =
+* New: Add support for checkout block. NB: Country code cannot be removed.
+* Fix: Rename kia_remove_billing_address_fields_for_free_checkout() to HelgaTheViking\RemoveBillingAddressForFreeCheckout\remove_fields()
 
 = 2021-12-28 - 1.0.1 =
 * New: Introduce `wc_billing_fields_to_remove_for_free_checkout` filter.
